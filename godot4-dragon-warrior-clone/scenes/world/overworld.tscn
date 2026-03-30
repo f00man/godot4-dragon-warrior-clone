@@ -1,0 +1,57 @@
+[gd_scene load_steps=5 format=3 uid="uid://overworld1"]
+
+; External scripts referenced by nodes in this scene.
+[ext_resource type="Script" path="res://scenes/world/overworld.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/entities/player.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/systems/encounter_manager.gd" id="3"]
+
+; Inline shape resource for the player's collision box.
+; RectangleShape2D.size is the full width/height (not half-extents), so
+; Vector2(32, 32) matches one 32x32 tile exactly.
+[sub_resource type="RectangleShape2D" id="1"]
+size = Vector2(32, 32)
+
+; ---------------------------------------------------------------------------
+; Scene tree
+; ---------------------------------------------------------------------------
+
+; Root node — Node2D with the overworld script attached.
+[node name="Overworld" type="Node2D"]
+script = ExtResource("1")
+
+; TileMapLayer holds the world map tiles. No tileset is assigned yet —
+; one will be set in the editor once art assets are ready.
+; Using TileMapLayer (not the deprecated TileMap) per project standards.
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
+
+; Player — CharacterBody2D so it can participate in the physics layer later
+; when tile collision is activated. Script handles all grid movement logic.
+[node name="Player" type="CharacterBody2D" parent="."]
+script = ExtResource("2")
+
+; Collision shape for the player body — one full tile in size.
+; Positioned at (16, 16) so the shape's centre aligns with the tile origin
+; at the node's top-left corner, matching the ColorRect placeholder.
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+position = Vector2(16, 16)
+shape = SubResource("1")
+
+; Cyan rectangle used as a stand-in player sprite until real art is added.
+; 32x32 pixels, anchored at (0,0) relative to the Player node origin.
+[node name="PlaceholderRect" type="ColorRect" parent="Player"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0, 1, 1, 1)
+
+; Camera follows the Player automatically because it is a child of the
+; Player node — no position tracking code required.
+[node name="Camera2D" type="Camera2D" parent="Player"]
+enabled = true
+
+; EncounterManager — plain Node (no physics, no rendering) that listens to
+; player_moved and rolls for random battles on each step. Kept as a child node
+; rather than an autoload so its encounter rate can be scoped to this scene.
+[node name="EncounterManager" type="Node" parent="."]
+script = ExtResource("3")

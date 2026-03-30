@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://savescreen1"]
+
+[ext_resource type="Script" path="res://scenes/ui/save_screen.gd" id="1_savescreen"]
+
+[node name="SaveScreen" type="Node2D"]
+script = ExtResource("1_savescreen")
+
+[node name="PlaceholderLabel" type="Label" parent="."]
+position = Vector2(200, 220)
+text = "Save Select -- Coming Soon"

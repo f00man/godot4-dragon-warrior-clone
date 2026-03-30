@@ -1,0 +1,26 @@
+{
+  "id": "bandit_camp_choice",
+  "trigger": {
+    "flag_required": "found_bandit_camp",
+    "flag_not": "event_bandit_camp_choice_done"
+  },
+  "description": "You discover a bandit camp near Riverkeep.",
+  "choices": [
+    {
+      "text": "Attack the bandits",
+      "outcomes": {
+        "set_flag": "resolved_bandit_camp",
+        "set_completion_flag": true,
+        "town_loyalty_delta": { "riverkeep": 15 }
+      }
+    },
+    {
+      "text": "Negotiate a truce",
+      "outcomes": {
+        "set_flag": "resolved_bandit_camp",
+        "set_flag_2": "bandits_allied",
+        "set_completion_flag": true
+      }
+    }
+  ]
+}
