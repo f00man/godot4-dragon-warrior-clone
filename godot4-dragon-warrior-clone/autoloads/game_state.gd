@@ -201,11 +201,12 @@ func reset_to_defaults():
 	playtime = 0.0
 	inventory = []
 	world_flags = {}
-	# Tile (16, 11) matches the Player node's starting position in overworld.tscn
-	# (Vector2(512, 352) / 32 = tile col 16, row 11) — safely inside the grass,
-	# clear of all perimeter walls. Vector2.ZERO would land on the top-left wall tile.
-	player_position = Vector2(16, 11)
-	current_scene = "res://scenes/world/overworld.tscn"
+	# Tile (6, 6) is the hero's starting position in tantegel_throne_room.tscn
+	# (pixel 192, 192 / 32 = col 6, row 6) — centered in the throne room,
+	# facing King Lorik. New game always begins here; overworld spawn is only
+	# used when exiting the castle via tantegel_floor1.gd staircase logic.
+	player_position = Vector2(6, 6)
+	current_scene = "res://scenes/world/tantegel_throne_room.tscn"
 	in_battle = false
 	is_playtime_paused = false
 	towns = {}
