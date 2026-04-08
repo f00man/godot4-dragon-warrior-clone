@@ -1,15 +1,4 @@
-; ==============================================================================
-; tantegel_throne_room.tscn
-; Part of: godot4-dragon-warrior-clone
-; Room: 14 columns x 8 rows at 32px per tile = 448 x 256 pixels world-space.
-; Fixed Camera2D at scene root (not parented to Player) shows the full room at
-; once at zoom 2x — exactly as Dragon Warrior NES presents the throne room.
-; Encounters are disabled (base_encounter_rate = 0.0 on EncounterManager).
-; First visit: King Lorik delivers his 7-page opening speech (world flag guards
-; repeat plays). Subsequent visits: player can speak to all NPCs and use stairs.
-; ==============================================================================
-
-[gd_scene load_steps=13 format=3 uid="uid://tantegelthrone1"]
+[gd_scene format=3 uid="uid://brrx8ne5hv3mw"]
 
 ; ------------------------------------------------------------------------------
 ; External resources — scripts and the instanced DialogueBox packed scene.
