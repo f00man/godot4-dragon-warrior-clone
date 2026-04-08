@@ -161,24 +161,27 @@ script = ExtResource("4_npcdialogue")
 dialogue_pages = ["Those stairs lead upward to the throne room, where King Lorik holds court."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardNorth" unique_id=1898057857]
-position = Vector2(16, 16)
+position = Vector2(-24, -6)
 shape = SubResource("BodyShape")
 
 [node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardNorth" unique_id=148153052]
-offset_right = 32.0
-offset_bottom = 32.0
+offset_left = -40.0
+offset_top = -22.0
+offset_right = -8.0
+offset_bottom = 10.0
 color = Color(0.4, 0.4, 0.8, 1)
 
 [node name="NameLabel" type="Label" parent="NPC_GuardNorth" unique_id=1224863121]
-offset_left = -16.0
-offset_top = -18.0
-offset_right = 48.0
-offset_bottom = -2.0
+offset_left = -56.0
+offset_top = -40.0
+offset_right = 8.0
+offset_bottom = -24.0
 theme_override_font_sizes/font_size = 8
 text = "Guard"
 horizontal_alignment = 1
 
 [node name="InteractionZone" type="Area2D" parent="NPC_GuardNorth" unique_id=1793762505]
+position = Vector2(-40, -22)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardNorth/InteractionZone" unique_id=385946799]
 position = Vector2(16, 16)
@@ -191,24 +194,27 @@ script = ExtResource("4_npcdialogue")
 dialogue_pages = ["The Dragonlord's minions have been seen moving southward from his domain. Be on guard when thou leavest the castle."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardPatrol" unique_id=1891168872]
-position = Vector2(16, 16)
+position = Vector2(-72, -38)
 shape = SubResource("BodyShape")
 
 [node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardPatrol" unique_id=446065651]
-offset_right = 32.0
-offset_bottom = 32.0
+offset_left = -88.0
+offset_top = -54.0
+offset_right = -56.0
+offset_bottom = -22.0
 color = Color(0.4, 0.4, 0.8, 1)
 
 [node name="NameLabel" type="Label" parent="NPC_GuardPatrol" unique_id=611252931]
-offset_left = -16.0
-offset_top = -18.0
-offset_right = 48.0
-offset_bottom = -2.0
+offset_left = -104.0
+offset_top = -72.0
+offset_right = -40.0
+offset_bottom = -56.0
 theme_override_font_sizes/font_size = 8
 text = "Guard"
 horizontal_alignment = 1
 
 [node name="InteractionZone" type="Area2D" parent="NPC_GuardPatrol" unique_id=887031927]
+position = Vector2(-88, -54)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardPatrol/InteractionZone" unique_id=259196297]
 position = Vector2(16, 16)
@@ -252,24 +258,27 @@ script = ExtResource("4_npcdialogue")
 dialogue_pages = ["Those stairs descend to the castle entrance. Brecconary lies just south of the castle gates."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardSouth" unique_id=584166169]
-position = Vector2(16, 16)
+position = Vector2(56, 10)
 shape = SubResource("BodyShape")
 
 [node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardSouth" unique_id=1497253162]
-offset_right = 32.0
-offset_bottom = 32.0
+offset_left = 40.0
+offset_top = -6.0
+offset_right = 72.0
+offset_bottom = 26.0
 color = Color(0.4, 0.4, 0.8, 1)
 
 [node name="NameLabel" type="Label" parent="NPC_GuardSouth" unique_id=1161223704]
-offset_left = -16.0
-offset_top = -18.0
-offset_right = 48.0
-offset_bottom = -2.0
+offset_left = 24.0
+offset_top = -24.0
+offset_right = 88.0
+offset_bottom = -8.0
 theme_override_font_sizes/font_size = 8
 text = "Guard"
 horizontal_alignment = 1
 
 [node name="InteractionZone" type="Area2D" parent="NPC_GuardSouth" unique_id=737610528]
+position = Vector2(40, -6)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardSouth/InteractionZone" unique_id=1541953210]
 position = Vector2(16, 16)

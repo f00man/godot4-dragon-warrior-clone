@@ -1,0 +1,6 @@
+- Party system
+- Torches
+- Vampire system
+- Castle takeover
+- Repair of castle for progression
+- Rampart view of character/castle/landscape based on choices, gear, party, castle progression
