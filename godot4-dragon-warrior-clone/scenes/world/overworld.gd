@@ -52,26 +52,26 @@ var _map = []
 # ------------------------------------------------------------------------------
 const ENTRANCES = {
 	# Castles
-	"45,43":  "res://scenes/world/tantegel_throne_room.tscn",
+	"44,51":  "res://scenes/world/tantegel_throne_room.tscn",  # Tantegel Castle
 
 	# Towns — all routed to town_sample until individual scenes exist
-	"44,47":  "res://scenes/towns/town_sample.tscn",   # Brecconary
-	"17,27":  "res://scenes/towns/town_sample.tscn",   # Garinham     (placeholder)
-	"58,17":  "res://scenes/towns/town_sample.tscn",   # Kol          (placeholder)
-	"92,55":  "res://scenes/towns/town_sample.tscn",   # Rimuldar     (placeholder)
-	"30,89":  "res://scenes/towns/town_sample.tscn",   # Cantlin      (placeholder)
-	"51,81":  "res://scenes/towns/town_sample.tscn",   # Hauksness    (placeholder)
+	"47,57":  "res://scenes/towns/town_sample.tscn",   # Brecconary
+	"17,26":  "res://scenes/towns/town_sample.tscn",   # Garinham     (placeholder)
+	"58,7":   "res://scenes/towns/town_sample.tscn",   # Kol          (placeholder)
+	"95,50":  "res://scenes/towns/town_sample.tscn",   # Rimuldar     (placeholder)
+	"37,103": "res://scenes/towns/town_sample.tscn",   # Cantlin      (placeholder)
+	"42,73":  "res://scenes/towns/town_sample.tscn",   # Hauksness    (placeholder)
 
 	# Caves — empty until dungeon scenes are built
-	"26,24":  "",  # Grave of Garin
-	"62,22":  "",  # Mountain Cave
-	"64,46":  "",  # Swamp Cave
-	"26,90":  "",  # Erdrick's Cave
-	"52,78":  "",  # Hauksness cave
-	"87,18":  "",  # Cave of Domdora
+	"14,30":  "",  # Grave of Garin
+	"60,17":  "",  # Mountain Cave
+	"63,47":  "",  # Swamp Cave
+	"28,90":  "",  # Erdrick's Cave
+	"45,76":  "",  # Hauksness cave
+	"88,17":  "",  # Cave of Domdora
 
-	# Charlock — endgame destination, no scene yet
-	"58,105": "",
+	# Charlock — endgame, no scene yet
+	"57,108": "",
 }
 
 # ------------------------------------------------------------------------------
@@ -186,98 +186,159 @@ func _place(x, y, tile):
 # ── Continent shape ────────────────────────────────────────────────────────────
 
 func _paint_continent():
-	# 1. Fill large rectangular land blobs that form the main continent body.
-	_fill(7,   7,  72,  90, PLAINS)   # western/central landmass
-	_fill(68,  7, 115,  90, PLAINS)   # eastern landmass
-	_fill(7,  87,  44, 115, PLAINS)   # southwest (Cantlin region)
-	_fill(68, 87, 115, 115, PLAINS)   # southeast
+	# Continent shape based on the Dragon Warrior NES reference map.
+	# Strategy: fill large land blobs, then carve ocean features into them.
 
-	# 2. Carve ocean bays and channels into the land to shape the coastlines.
-	_fill(7,  48,  24,  65, OCEAN)    # northwest bay
-	_fill(7,  70,  18,  87, OCEAN)    # central-west coastal recess
-	_fill(74, 42,  92,  72, OCEAN)    # eastern channel (Rimuldar strait)
-	_fill(35, 93,  80, 117, OCEAN)    # southern interior sea (Charlock's domain)
-	_fill(7, 100,  22, 117, OCEAN)    # southwest coast recession
-	_fill(92, 98, 115, 117, OCEAN)    # southeast coast recession
+	# ── 1. Northern neck leading to Kol ─────────────────────────────────────
+	# A relatively thin strip of land at the very top of the map. Kol sits on
+	# the north coast; the land widens as you go south toward Tantegel.
+	_fill(25,  4,  72, 18, PLAINS)
 
-	# 3. Restore islands carved out in step 2.
-	_fill(91, 49, 108,  70, PLAINS)   # Rimuldar island
-	_fill(51, 99,  69, 115, PLAINS)   # Charlock island
-	_fill(10, 100,  19, 110, PLAINS)  # small southwest island
-	_fill(105,  8, 114,  18, PLAINS)  # small northeast island
+	# ── 2. Northwest peninsula (Garinham region) ─────────────────────────────
+	# A prominent western peninsula separated from the main continent by a
+	# large bay. Connected on its southern edge around y=42.
+	_fill(5,  14,  38, 44, PLAINS)
+
+	# ── 3. Main western landmass ─────────────────────────────────────────────
+	# The core continent body: Tantegel, Brecconary, and everything south
+	# through to the interior sea coast.
+	_fill(5,  18,  73, 82, PLAINS)
+
+	# ── 4. Eastern landmass ──────────────────────────────────────────────────
+	# Separated from the western body by the Rimuldar strait. Large forest-
+	# heavy landmass; Cave of Domdora is here in the northeast.
+	_fill(73, 14, 117, 80, PLAINS)
+
+	# ── 5. Southwest peninsula (Cantlin region) ──────────────────────────────
+	_fill(5,  80,  45, 117, PLAINS)
+
+	# ── 6. Southeast extension ───────────────────────────────────────────────
+	_fill(83, 80, 117, 110, PLAINS)
+
+	# ── 7. Carve ocean features ───────────────────────────────────────────────
+
+	# Northwest bay — the bay below the Garinham peninsula. A bridge on the
+	# east side of this bay is the only land crossing.
+	_fill(5,  43,  24,  63, OCEAN)
+
+	# Rimuldar strait — the deep vertical channel dividing east from west.
+	# The famous long bridge crosses it around y=50.
+	_fill(73, 32,  88,  70, OCEAN)
+
+	# Southern interior sea — large bay containing Charlock's island.
+	# Surrounded by mountains and swamp; entered only by boat in the original.
+	_fill(30, 83,  83, 118, OCEAN)
+
+	# Southwest coast carve — gives the Cantlin peninsula its irregular shape.
+	_fill(5, 102,  20, 118, OCEAN)
+
+	# Southeast coast carve
+	_fill(93, 105, 117, 118, OCEAN)
+
+	# Minor western bay (mid-coast)
+	_fill(5,  64,  18,  78, OCEAN)
+
+	# ── 8. Islands ────────────────────────────────────────────────────────────
+
+	# Rimuldar island — the eastern island reached by the long bridge.
+	_fill(88, 37, 114,  68, PLAINS)
+
+	# Charlock island — the Dragonlord's island in the southern interior sea.
+	_fill(47, 95,  68, 115, PLAINS)
+
+	# Small scattered islands
+	_fill(8,  100,  18, 112, PLAINS)  # small island off the southwest coast
 
 
 # ── Terrain overlays ───────────────────────────────────────────────────────────
 
 func _paint_terrain():
-	# --- FOREST ---
-	_fill(7,  20,  33,  50, FOREST)   # northwest forest (Garinham region)
-	_fill(44,  7,  74,  22, FOREST)   # northern belt (road to Kol)
-	_fill(92,  7, 115,  42, FOREST)   # eastern forest
-	_fill(80, 60, 115,  90, FOREST)   # southeast forest
-	_fill(28, 56,  46,  74, FOREST)   # central-west scattered forest
+	# Terrain based on the Dragon Warrior NES reference map.
 
-	# --- MOUNTAIN ---
-	_fill(32, 52,  44,  65, MOUNTAIN) # central-west range (barrier south of Tantegel)
-	_fill(92, 38, 115,  75, MOUNTAIN) # eastern mountain spine
-	_fill(60, 18,  72,  34, MOUNTAIN) # northern cluster (near cave)
-	_fill(35, 88,  80,  96, MOUNTAIN) # southern interior sea shores
-	_fill(51, 99,  69, 115, MOUNTAIN) # Charlock island — mostly impassable rock
+	# ── FOREST ────────────────────────────────────────────────────────────────
+	# Northwest forests — dense woodland around Garinham; Grave of Garin hidden here.
+	_fill(5,  14,  35,  42, FOREST)
+	# Northern forest belt — flanking the approach to Kol.
+	_fill(27,  4,  72,  17, FOREST)
+	# Eastern forests — large region east of the Rimuldar strait.
+	_fill(88, 14, 117,  45, FOREST)
+	# Southeast forests — south of the strait.
+	_fill(83, 55, 117,  80, FOREST)
+	# Central-east forest patch — between Tantegel and the strait.
+	_fill(55, 35,  73,  60, FOREST)
 
-	# --- SWAMP ---
-	_fill(48, 74,  70,  90, SWAMP)    # south-central swamp (Hauksness area)
+	# ── MOUNTAIN ──────────────────────────────────────────────────────────────
+	# Central range south of Tantegel — the main barrier between the populated
+	# north and the dangerous south.
+	_fill(30, 60,  50,  72, MOUNTAIN)
+	# Mountain range along the north shore of the interior sea.
+	_fill(32, 80,  82,  88, MOUNTAIN)
+	# Northern mountain cluster — near the Mountain Cave north of Kol.
+	_fill(57, 18,  70,  32, MOUNTAIN)
+	# Eastern mountain spine — harsh terrain in the far east.
+	_fill(90, 42, 117,  68, MOUNTAIN)
+	# Charlock island — mostly impassable rock; castle and approaches cleared below.
+	_fill(47, 95,  68, 115, MOUNTAIN)
 
-	# --- DESERT ---
-	_fill(7,  74,  40,  96, DESERT)   # southwest desert (approach to Cantlin)
+	# ── SWAMP ─────────────────────────────────────────────────────────────────
+	# Hauksness area — south-central swamp; damaging per step in the original.
+	_fill(35, 68,  65,  82, SWAMP)
 
-	# --- CLEAR PLAINS around each landmark zone ---
-	# Each named location gets breathing room so the player can approach freely.
-	_fill(38, 38,  56,  54, PLAINS)   # Tantegel / Brecconary
-	_fill(52, 12,  66,  22, PLAINS)   # Kol
-	_fill(11, 22,  24,  33, PLAINS)   # Garinham
-	_fill(89, 48, 109,  71, PLAINS)   # Rimuldar island interior
-	_fill(44, 76,  60,  88, PLAINS)   # Hauksness
-	_fill(23, 84,  40,  97, PLAINS)   # Cantlin
-	_fill(53, 100,  67, 113, PLAINS)  # Charlock island approach
-	_fill(55, 102,  65, 111, PLAINS)  # Charlock inner zone
+	# ── DESERT ────────────────────────────────────────────────────────────────
+	# Southwest desert — the arid approach to Cantlin.
+	_fill(8,  78,  42,  103, DESERT)
+
+	# ── CLEAR PLAINS around landmark zones ───────────────────────────────────
+	_fill(38, 46,  56,  62, PLAINS)   # Tantegel / Brecconary
+	_fill(50,  3,  68,  12, PLAINS)   # Kol
+	_fill(10, 21,  26,  34, PLAINS)   # Garinham
+	_fill(86, 39, 112,  66, PLAINS)   # Rimuldar island interior
+	_fill(35, 67,  53,  80, PLAINS)   # Hauksness
+	_fill(28, 96,  50, 110, PLAINS)   # Cantlin
+	_fill(48, 97,  68, 115, PLAINS)   # Charlock island (cleared, MOUNTAIN re-added above)
+	_fill(52, 102,  64, 112, PLAINS)  # Charlock inner zone around the castle
 
 
 # ── Landmark tiles ─────────────────────────────────────────────────────────────
 
 func _place_landmarks():
+	# Positions based on the Dragon Warrior NES reference overworld map.
+
 	# Castles
-	_place(45, 43, CASTLE)   # Tantegel Castle
-	_place(58, 105, CASTLE)  # Charlock Castle (Dragonlord's keep)
+	_place(44, 51, CASTLE)   # Tantegel Castle  — hero's origin; south of center
+	_place(57, 108, CASTLE)  # Charlock Castle  — Dragonlord's keep on the southern island
 
 	# Towns
-	_place(44, 47, TOWN)     # Brecconary  — first town, south of Tantegel
-	_place(17, 27, TOWN)     # Garinham    — northwest, Silver Harp
-	_place(58, 17, TOWN)     # Kol         — north, Fairy Flute
-	_place(92, 55, TOWN)     # Rimuldar    — eastern island, sells Keys
-	_place(30, 89, TOWN)     # Cantlin     — southwest desert, strongest shop
-	_place(51, 81, TOWN)     # Hauksness   — south ruins, Armor of Erdrick nearby
+	_place(47, 57, TOWN)     # Brecconary  — first town; SE of Tantegel
+	_place(17, 26, TOWN)     # Garinham    — NW peninsula; Silver Harp
+	_place(58,  7, TOWN)     # Kol         — far north coast; Fairy Flute
+	_place(95, 50, TOWN)     # Rimuldar    — eastern island; sells Keys
+	_place(37, 103, TOWN)    # Cantlin     — far SW; strongest weapons
+	_place(42, 73, TOWN)     # Hauksness   — south ruins; Armor of Erdrick nearby
 
 	# Caves and dungeons
-	_place(26, 24, CAVE)     # Grave of Garin    — northwest forest
-	_place(62, 22, CAVE)     # Mountain Cave     — north, beyond Kol
-	_place(64, 46, CAVE)     # Swamp Cave        — central passage
-	_place(26, 90, CAVE)     # Erdrick's Cave    — southwest near Cantlin
-	_place(52, 78, CAVE)     # Hauksness dungeon
-	_place(87, 18, CAVE)     # Cave of Domdora   — northeast
+	_place(14, 30, CAVE)     # Grave of Garin  — NW forest (Silver Harp)
+	_place(60, 17, CAVE)     # Mountain Cave   — north; multi-floor dungeon
+	_place(63, 47, CAVE)     # Swamp Cave      — central passage east↔west
+	_place(28, 90, CAVE)     # Erdrick's Cave  — SW near Cantlin (Erdrick's Seal)
+	_place(45, 76, CAVE)     # Hauksness cave  — approach dungeon
+	_place(88, 17, CAVE)     # Cave of Domdora — NE forest
 
 
 # ── Bridges ────────────────────────────────────────────────────────────────────
 
 func _paint_bridges():
-	# East bridge — the iconic long bridge to Rimuldar (17 tiles wide)
-	for x in range(74, 91):
-		_place(x, 55, BRIDGE)
-	# Northwest bay bridge — vertical crossing on the bay's east shore
-	for y in range(48, 57):
+	# East bridge — the famous long bridge to Rimuldar island.
+	# Runs horizontally across the Rimuldar strait at roughly the same latitude
+	# as Rimuldar town (y=50). Spans the full width of the channel.
+	for x in range(73, 89):
+		_place(x, 50, BRIDGE)
+
+	# Northwest bay bridge — vertical crossing on the east shore of the bay
+	# below the Garinham peninsula. The only path south along the west coast
+	# without going all the way around the peninsula.
+	for y in range(43, 62):
 		_place(24, y, BRIDGE)
-	# Northern pass bridge — small horizontal gap near the Kol road
-	for x in range(42, 46):
-		_place(x, 22, BRIDGE)
 
 
 # ── TileSet builder ────────────────────────────────────────────────────────────
