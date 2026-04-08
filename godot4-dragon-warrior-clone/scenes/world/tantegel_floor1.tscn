@@ -1,16 +1,4 @@
-; ==============================================================================
-; tantegel_floor1.tscn
-; Part of: godot4-dragon-warrior-clone
-; Room: 14 columns x 8 rows at 32px per tile = 448 x 256 pixels world-space.
-; Fixed Camera2D at scene root (not parented to Player), zoom 2x.
-; Encounters are disabled (base_encounter_rate = 0.0).
-; North gap (stairs up to Floor 2) and south gap (castle exit to overworld)
-; are both centred at x=192–256 (columns 6–7), two-tile openings.
-; NPCs: two guards at north, old soldier west, guard at exit, guard east.
-; Chest: herb near the west wall (world flag guarded, one-time loot).
-; ==============================================================================
-
-[gd_scene load_steps=13 format=3 uid="uid://tantegelfloor11"]
+[gd_scene format=3 uid="uid://brrx8m0aev8aw"]
 
 ; ------------------------------------------------------------------------------
 ; External resources — scripts and the instanced DialogueBox packed scene.
@@ -211,13 +199,14 @@ horizontal_alignment = 1
 theme_override_font_sizes/font_size = 14
 
 ; Castle exit — south gap (x=192–256, y=224–256) — leads to the overworld.
-; spawn_tile Vector2(16,9) places the player just south of the castle gate on
-; the overworld map, the standard entry point for Tantegel Castle.
+; spawn_tile Vector2(45,46) places the player one tile south of Tantegel Castle
+; on the Dragon Warrior overworld map (castle is at tile 45,43; tile 45,46 is
+; the first walkable plains tile just below the castle entrance).
 ; Uses a brown colour to visually distinguish the exit from interior stairs.
 [node name="CastleExit" type="Area2D" parent="."]
 script = ExtResource("5_staircase")
 target_scene = "res://scenes/world/overworld.tscn"
-spawn_tile = Vector2(16, 9)
+spawn_tile = Vector2(45, 46)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CastleExit"]
 position = Vector2(224, 240)
