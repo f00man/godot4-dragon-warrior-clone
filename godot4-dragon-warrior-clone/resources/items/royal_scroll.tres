@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://item_royal_scroll"]
+
+[ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_name = "Royal Scroll"
+description = "An ancient scroll bearing the kingdom's seal. Allows you to record your journey at any time."
+effect_type = "save_permit"
+effect_value = 0

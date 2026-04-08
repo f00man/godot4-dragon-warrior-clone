@@ -68,6 +68,67 @@ Every `.gd` file should start with a comment block like this:
 
 ---
 
+## Editor-First Workflow
+
+**The Godot editor owns all scene layouts. Claude owns all GDScript code.**
+
+This is the fundamental division of labor for this project.
+
+### The Rule
+
+- **Never create or modify `.tscn` files** to define visual layouts. The Godot
+  editor is the only tool for building scene trees, positioning nodes, setting
+  anchor/size properties, and assigning themes/fonts/colors in the Inspector.
+- **Claude's job for UI and scenes:** Read the `.tscn` file, understand the node
+  tree, and write the `.gd` script that drives it.
+- If a feature requires a new node in the scene tree, Claude must **tell the user
+  exactly what to add in the editor** (node type, name, position in the tree,
+  key Inspector properties) rather than writing it into a `.tscn` file or
+  creating nodes with `add_child()` in code.
+
+### Why
+
+Complex visual requirements — anchor layouts, theme overrides, responsive sizing,
+sprite positioning, panel margins — cannot be communicated accurately in text or
+code. The editor is the only reliable way to express and validate visual intent.
+Layouts built in code are fragile, hard to tweak, and disconnect the visual
+result from the code.
+
+### Workflow for New Scenes
+
+1. **User creates the scene** in the Godot editor — places nodes, sets anchors,
+   names everything, assigns placeholder textures/colors.
+2. **User saves** the `.tscn` file to the correct directory.
+3. **User tells Claude** what the scene should do (behaviour, signals, data it
+   reads/writes).
+4. **Claude reads the `.tscn`** to see the exact node names and tree structure.
+5. **Claude writes the `.gd` script** using `@onready` references that match
+   the node names exactly as they appear in the `.tscn`.
+
+### What Claude Must Do Before Writing Any Scene Script
+
+1. **Read the `.tscn` file first.** Never assume node names — always read the
+   current scene file to get the exact names.
+2. **List any nodes the script needs that are missing** from the scene (e.g.
+   a Timer, an AudioStreamPlayer). State the node type, suggested name, and
+   where it should live in the tree. Ask the user to add them in the editor
+   before writing code that references them.
+3. **Never use `add_child()` to build layout nodes** (Labels, Buttons,
+   Containers, ColorRects, etc.) at runtime unless it's genuinely dynamic
+   content that can't be known at edit time (e.g. a list of inventory items
+   whose count varies). Even then, the *container* for that dynamic content
+   must be a node placed in the editor.
+
+### What Claude Must Never Do
+
+- Do not write `.tscn` files or partial scene definitions as code.
+- Do not use `preload` + `instantiate` to build UI panels that should be
+  editor-placed nodes.
+- Do not create placeholder `ColorRect` or `Label` nodes in code — if a
+  placeholder is needed, the user places it in the editor.
+
+---
+
 ## Project Architecture
 
 ### Autoloads (Global Singletons)
@@ -260,7 +321,7 @@ the relevant system is built. Update this table as items are resolved or added.
 
 | # | Item | Notes |
 |---|------|-------|
-| S1 | Replace raw-dict party deserialization with full `PartyMemberData` resource loading | In `_deserialize_into_game_state` — load `.tres` by `resource_path`, overlay saved `current_hp`/`current_mp`/`experience`/`level`. Blocked on R1. |
+| ~~S1~~ | ~~Replace raw-dict party deserialization with full `PartyMemberData` resource loading~~ | Done. Loads `.tres` by `resource_path`, falls back to name-based lookup, overlays `current_hp`/`current_mp`/`experience`/`level` from save data. |
 | S2 | Add real migration rules to `_migrate_save()` | Add `if from_version == "x.y.z":` blocks each time the save schema changes. Currently a pass-through stub. |
 | S3 | Extend `_scene_path_to_label()` label map | Add an entry for each new scene as they are created. Currently only overworld and battle are mapped. |
 
@@ -276,10 +337,10 @@ the relevant system is built. Update this table as items are resolved or added.
 
 | # | Item | Notes |
 |---|------|-------|
-| E1 | Implement `evaluate_condition()` | Currently returns `true` unconditionally. Needs real `flag_required`, `flag_not`, and `scene_id` checks against `GameState.has_flag()`. **Must be done before any QA pass.** |
-| E2 | Implement `trigger_event()` | Needs dialogue UI integration: display description, present choices, await player selection, then call `apply_outcome()`. |
-| E3 | Implement `check_events_for_scene()` | Needs iteration loop over `_events`, calling `evaluate_condition()` + `is_event_completed()` filter, then `trigger_event()` for matches. Wire up call from `SceneManager.transition_finished` signal. |
-| E4 | Implement `apply_outcome()` | Needs handlers for: `set_flag`, `set_flag_2`, `town_loyalty_delta`, `add_item`, `add_party_member`, `remove_party_member`, `set_completion_flag`. `trigger_event()` must inject `event_id` into the outcome dict before calling so the completion flag key can be constructed. |
+| E1 | ~~Implement `evaluate_condition()`~~ | Done. Checks `flag_required`, `flag_not`, and `scene_id` against `GameState.has_flag()` / `get_flag()` / `current_scene`. Empty trigger dict fires unconditionally. |
+| ~~E2~~ | ~~Implement `trigger_event()`~~ | Done. Stores event as `_pending_event`, emits `event_started` and `dialogue_requested`. Scene must connect `DialogueBox.choice_made` to `EventManager.submit_choice`. New public `submit_choice(index)` applies outcomes via `apply_outcome()`. |
+| ~~E3~~ | ~~Implement `check_events_for_scene()`~~ | Done. Iterates `_events.values()`, skips completed events, evaluates conditions (with scene_id injected), triggers first match and breaks. Fires at most one event per call. |
+| ~~E4~~ | ~~Implement `apply_outcome()`~~ | Done. Handles `set_flag`, `set_flag_2`, `town_loyalty_delta`, `add_item`, `add_party_member`, `remove_party_member`, `set_completion_flag`. Takes `event_id` as second argument. Emits `event_completed` after all outcomes applied. |
 
 ### TownManager (`autoloads/town_manager.gd`)
 
@@ -297,13 +358,13 @@ the relevant system is built. Update this table as items are resolved or added.
 | # | Item | Notes |
 |---|------|-------|
 | SC1 | Consider a history stack for `transition_back()` | Currently tracks only one level of history. Nested menu flows (e.g. overworld → town → shop → item detail) may need a full stack. |
-| SC2 | Wire `transition_finished` to `EventManager.check_events_for_scene()` | After each transition completes, SceneManager should notify EventManager so scene-entry events can fire. Blocked on E3. |
+| ~~SC2~~ | ~~Wire `transition_finished` to `EventManager.check_events_for_scene()`~~ | Done. Connected in `SceneManager._ready()` via `transition_finished.connect(EventManager.check_events_for_scene)`. Events now fire automatically on every scene load. |
 
 ### Battle System (`scenes/battle/battle_scene.gd`)
 
 | # | Item | Notes |
 |---|------|-------|
-| B1 | Remove `ui_cancel` escape hatch from `_unhandled_input` | Temporary test shortcut that exits battle immediately on Escape/Cancel. Lets you verify the full overworld → battle → overworld loop works before the real battle system exists — very satisfying to see end to end. Remove or gate it behind a debug flag once real battle-end conditions are implemented. |
+| ~~B1~~ | ~~Remove `ui_cancel` escape hatch from `_unhandled_input`~~ | Done — removed. Battle exits only via victory, defeat, or successful run. |
 
 ---
 

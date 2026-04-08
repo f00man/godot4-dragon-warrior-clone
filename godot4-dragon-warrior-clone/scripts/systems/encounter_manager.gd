@@ -16,14 +16,35 @@ extends Node
 # Path to the battle scene. SceneManager transitions here when an encounter fires.
 const BATTLE_SCENE_PATH = "res://scenes/battle/battle_scene.tscn"
 
+# Maps a substring of the current scene path to a list of enemy .tres resource
+# paths that can appear in that zone.
+#
+# Rules:
+#   - Keys are plain substrings — the first key whose substring is found inside
+#     GameState.current_scene wins, so list more-specific keys before general
+#     ones (e.g. "overworld_desert" before "overworld").
+#   - Towns carry encounter_rate = 0.0 so they never reach this table in normal
+#     play, but they are included as a safety net in case a non-zero rate is
+#     ever configured accidentally.
+#   - An empty list means "no valid enemies for this zone" — _pick_enemy_for_scene()
+#     falls back to the slime rather than crashing.
+const ENCOUNTER_TABLES = {
+	"overworld": [
+		"res://resources/enemies/slime.tres",
+		"res://resources/enemies/drakee.tres",
+	],
+	"town": [],
+}
+
 # ---------------------------------------------------------------------------
 # Exports — designer-tweakable in the Inspector
 # ---------------------------------------------------------------------------
 
-# Default encounter rate: 1-in-16 chance per step (1/16 = 0.0625).
+# Default encounter rate: 1-in-50 chance per step (1/50 = 0.02).
+# Dragon Warrior NES was roughly 1-in-32 to 1-in-64 depending on zone.
 # Override per zone via set_zone_encounter_rate().
 # Designer-tweakable in the Inspector.
-@export var base_encounter_rate = 0.0625
+@export var base_encounter_rate = 0.02
 
 # ---------------------------------------------------------------------------
 # Private state
@@ -31,7 +52,7 @@ const BATTLE_SCENE_PATH = "res://scenes/battle/battle_scene.tscn"
 
 # Active encounter rate for the current zone. Starts equal to base_encounter_rate;
 # updated by set_zone_encounter_rate() when the player enters a new zone.
-var _current_encounter_rate = 0.0625
+var _current_encounter_rate = 0.02
 
 # Stores the scene path to return to after battle ends. Set immediately before
 # transitioning to the battle scene so SceneManager.transition_back() lands
@@ -69,10 +90,51 @@ func _trigger_encounter():
 	# SceneManager.
 	_return_scene_path = GameState.current_scene
 
+	# Pick the enemy for this zone and queue it for the battle scene to consume.
+	# _pick_enemy_for_scene() handles all the zone-lookup and fallback logic so
+	# this function stays focused on the transition, not the selection.
+	GameState.pending_battle_enemies = [_pick_enemy_for_scene()]
+
 	# Hand off to SceneManager for the fade transition. Battle scene takes over
 	# from here; return_to_overworld() in battle_scene.gd calls
 	# SceneManager.transition_back().
 	SceneManager.transition_to(BATTLE_SCENE_PATH)
+
+
+# Looks up the current scene path in ENCOUNTER_TABLES, picks a random enemy
+# resource path from the matching list, and returns the loaded Resource.
+#
+# Selection logic:
+#   1. Iterate ENCOUNTER_TABLES keys. The first key whose substring is found
+#      inside GameState.current_scene wins.
+#   2. If the matching list is empty (e.g. "town"), fall through to the fallback.
+#   3. If no key matches at all, fall through to the fallback.
+#   Fallback: always the slime — guarantees the function never returns null.
+func _pick_enemy_for_scene():
+	# Fallback path used when no table entry matches or a matched table is empty.
+	# The slime is the gentlest enemy in the game, so it is the safest default.
+	var fallback_path = "res://resources/enemies/slime.tres"
+
+	# Walk the table in key-insertion order. The first substring match wins, so
+	# more-specific keys (listed first in ENCOUNTER_TABLES) take priority.
+	for zone_key in ENCOUNTER_TABLES:
+		if GameState.current_scene.contains(zone_key):
+			var enemy_paths = ENCOUNTER_TABLES[zone_key]
+
+			# An empty list means this zone deliberately has no encounters.
+			# Fall through to the fallback rather than calling pick_random_index
+			# on an empty array (which would crash).
+			if enemy_paths.is_empty():
+				break
+
+			# Pick a random index from the valid paths. randi() % n is fine for
+			# a small table — no need for a weighted picker at this stage.
+			var chosen_path = enemy_paths[randi() % enemy_paths.size()]
+			return load(chosen_path)
+
+	# No matching zone key, or the matched zone's table was empty — load the
+	# fallback slime so the battle scene always receives a valid enemy resource.
+	return load(fallback_path)
 
 
 # Overrides the encounter rate for the current zone. Call this when the player

@@ -1,0 +1,219 @@
+[gd_scene load_steps=2 format=3 uid="uid://battleui1"]
+
+; External script attached to the root Control node.
+[ext_resource type="Script" path="res://scenes/ui/battle_ui.gd" id="1"]
+
+; ---------------------------------------------------------------------------
+; Root — BattleUI
+; Fills the entire 1920x1080 viewport. mouse_filter=2 (IGNORE) so it never
+; absorbs clicks meant for the scene underneath.
+; ---------------------------------------------------------------------------
+[node name="BattleUI" type="Control"]
+layout_mode = 3
+anchor_left   = 0.0
+anchor_top    = 0.0
+anchor_right  = 1.0
+anchor_bottom = 1.0
+offset_left   = 0.0
+offset_top    = 0.0
+offset_right  = 0.0
+offset_bottom = 0.0
+mouse_filter  = 2
+script = ExtResource("1")
+
+; ---------------------------------------------------------------------------
+; EnemyArea — fills the top 800px (1080 - 280px bottom panel).
+; Contains the monster placeholder, name label, and floating damage number.
+; ---------------------------------------------------------------------------
+[node name="EnemyArea" type="Control" parent="."]
+layout_mode = 1
+anchor_left   = 0.0
+anchor_top    = 0.0
+anchor_right  = 1.0
+anchor_bottom = 1.0
+offset_left   = 0.0
+offset_top    = 0.0
+offset_right  = 0.0
+offset_bottom = -280.0
+mouse_filter  = 2
+
+; MonsterPlaceholder — deep red body, centered horizontally.
+; Replace with a Sprite2D once real enemy art is available.
+; Width 360, height 480. Center X = (1920-360)/2 = 780.
+[node name="MonsterPlaceholder" type="ColorRect" parent="EnemyArea"]
+layout_mode = 0
+offset_left   = 780.0
+offset_top    = 100.0
+offset_right  = 1140.0
+offset_bottom = 580.0
+color = Color(0.72, 0.08, 0.08, 1.0)
+
+; MonsterHighlight — lighter red inset panel, gives a rough body/highlight split.
+[node name="MonsterHighlight" type="ColorRect" parent="EnemyArea"]
+layout_mode = 0
+offset_left   = 820.0
+offset_top    = 140.0
+offset_right  = 1100.0
+offset_bottom = 400.0
+color = Color(0.88, 0.20, 0.20, 1.0)
+
+; MonsterShadow — dark red strip at the base of the monster (ground shadow).
+[node name="MonsterShadow" type="ColorRect" parent="EnemyArea"]
+layout_mode = 0
+offset_left   = 780.0
+offset_top    = 540.0
+offset_right  = 1140.0
+offset_bottom = 580.0
+color = Color(0.38, 0.03, 0.03, 1.0)
+
+; EnemyNameLabel — centered below the placeholder. Updated at runtime.
+[node name="EnemyNameLabel" type="Label" parent="EnemyArea"]
+layout_mode = 0
+offset_left   = 560.0
+offset_top    = 594.0
+offset_right  = 1360.0
+offset_bottom = 648.0
+text = "Enemy"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+; DamageLabel — floating damage pop that tweens up and fades on a hit.
+; Starts hidden; animated by _show_damage_number().
+[node name="DamageLabel" type="Label" parent="EnemyArea"]
+layout_mode = 0
+offset_left   = 870.0
+offset_top    = 180.0
+offset_right  = 1050.0
+offset_bottom = 240.0
+visible = false
+text = "0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 36
+
+; ---------------------------------------------------------------------------
+; BottomPanel — 280px tall, pinned to the viewport bottom.
+; Left ~half: party HP/MP rows (built dynamically at runtime).
+; Right ~half: action menu and item sub-panel.
+; ---------------------------------------------------------------------------
+[node name="BottomPanel" type="ColorRect" parent="."]
+layout_mode = 1
+anchor_left   = 0.0
+anchor_top    = 1.0
+anchor_right  = 1.0
+anchor_bottom = 1.0
+offset_top    = -280.0
+offset_bottom = 0.0
+color = Color(0.07, 0.07, 0.07, 0.96)
+
+; PartyRows — VBoxContainer on the left side of the bottom panel.
+; Populated dynamically in _build_party_rows() from GameState.party.
+[node name="PartyRows" type="VBoxContainer" parent="BottomPanel"]
+layout_mode = 0
+offset_left   = 20.0
+offset_top    = 16.0
+offset_right  = 940.0
+offset_bottom = 264.0
+theme_override_constants/separation = 10
+
+; ---------------------------------------------------------------------------
+; ActionMenu — shown when action_needed fires for a party member.
+; Two-column button grid: Attack / Magic / Item / Run.
+; ---------------------------------------------------------------------------
+[node name="ActionMenu" type="VBoxContainer" parent="BottomPanel"]
+layout_mode = 0
+offset_left   = 980.0
+offset_top    = 8.0
+offset_right  = 1900.0
+offset_bottom = 268.0
+visible = false
+theme_override_constants/separation = 10
+
+; Prompt label above the buttons.
+[node name="ActionLabel" type="Label" parent="BottomPanel/ActionMenu"]
+layout_mode = 2
+text = "Choose action:"
+autowrap_mode = 1
+theme_override_font_sizes/font_size = 22
+
+; 2-column grid for the four action buttons.
+[node name="ButtonGrid" type="GridContainer" parent="BottomPanel/ActionMenu"]
+layout_mode = 2
+columns = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 10
+
+[node name="BtnAttack" type="Button" parent="BottomPanel/ActionMenu/ButtonGrid"]
+layout_mode = 2
+text = "Attack"
+focus_mode = 2
+custom_minimum_size = Vector2(400, 64)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+
+[node name="BtnMagic" type="Button" parent="BottomPanel/ActionMenu/ButtonGrid"]
+layout_mode = 2
+text = "Magic"
+focus_mode = 2
+disabled = true
+custom_minimum_size = Vector2(400, 64)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+
+[node name="BtnItem" type="Button" parent="BottomPanel/ActionMenu/ButtonGrid"]
+layout_mode = 2
+text = "Item"
+focus_mode = 2
+custom_minimum_size = Vector2(400, 64)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+
+[node name="BtnRun" type="Button" parent="BottomPanel/ActionMenu/ButtonGrid"]
+layout_mode = 2
+text = "Run"
+focus_mode = 2
+custom_minimum_size = Vector2(400, 64)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+
+; ---------------------------------------------------------------------------
+; ItemPanel — overlays the action menu when Item is selected.
+; ---------------------------------------------------------------------------
+[node name="ItemPanel" type="PanelContainer" parent="BottomPanel"]
+layout_mode = 0
+offset_left   = 980.0
+offset_top    = 8.0
+offset_right  = 1900.0
+offset_bottom = 268.0
+visible = false
+
+[node name="ItemList" type="VBoxContainer" parent="BottomPanel/ItemPanel"]
+layout_mode = 1
+anchor_left   = 0.0
+anchor_top    = 0.0
+anchor_right  = 1.0
+anchor_bottom = 1.0
+
+; ---------------------------------------------------------------------------
+; BattleLogLabel — one-line bar just above the bottom panel.
+; Shows the most recent battle_log message.
+; ---------------------------------------------------------------------------
+[node name="BattleLogLabel" type="Label" parent="."]
+layout_mode = 1
+anchor_left   = 0.0
+anchor_top    = 1.0
+anchor_right  = 1.0
+anchor_bottom = 1.0
+offset_left   = 8.0
+offset_top    = -316.0
+offset_bottom = -286.0
+text = ""
+horizontal_alignment = 0
+theme_override_font_sizes/font_size = 22
+
+; ---------------------------------------------------------------------------
+; Signal connections
+; ---------------------------------------------------------------------------
+[connection signal="pressed" from="BottomPanel/ActionMenu/ButtonGrid/BtnAttack" to="." method="_on_btn_attack_pressed"]
+[connection signal="pressed" from="BottomPanel/ActionMenu/ButtonGrid/BtnItem"   to="." method="_on_btn_item_pressed"]
+[connection signal="pressed" from="BottomPanel/ActionMenu/ButtonGrid/BtnRun"    to="." method="_on_btn_run_pressed"]

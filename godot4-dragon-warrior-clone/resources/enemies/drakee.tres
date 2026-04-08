@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3 uid="uid://enemy_drakee"]
+
+[ext_resource type="Script" path="res://scripts/resources/enemy_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+enemy_name = "Drakee"
+max_hp = 22
+attack = 8
+defense = 4
+speed = 6
+experience_reward = 5
+gold_reward = 3

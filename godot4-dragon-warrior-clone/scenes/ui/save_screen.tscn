@@ -2,9 +2,122 @@
 
 [ext_resource type="Script" path="res://scenes/ui/save_screen.gd" id="1_savescreen"]
 
-[node name="SaveScreen" type="Node2D"]
+[node name="SaveScreen" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_savescreen")
 
-[node name="PlaceholderLabel" type="Label" parent="."]
-position = Vector2(200, 220)
-text = "Save Select -- Coming Soon"
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.05, 0.05, 1)
+
+[node name="TitleLabel" type="Label" parent="."]
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 0.0
+anchor_bottom = 0.0
+offset_top = 60.0
+offset_bottom = 140.0
+grow_horizontal = 2
+text = "Load Game"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 48
+
+[node name="SlotList" type="VBoxContainer" parent="."]
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -500.0
+offset_top = -200.0
+offset_right = 500.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
+
+[node name="Slot0" type="HBoxContainer" parent="SlotList"]
+theme_override_constants/separation = 16
+
+[node name="InfoLabel" type="Label" parent="SlotList/Slot0"]
+custom_minimum_size = Vector2(600, 0)
+text = "— Empty —"
+theme_override_font_sizes/font_size = 22
+
+[node name="BtnLoad" type="Button" parent="SlotList/Slot0"]
+custom_minimum_size = Vector2(140, 52)
+focus_mode = 2
+text = "Load"
+disabled = true
+theme_override_font_sizes/font_size = 20
+
+[node name="BtnDelete" type="Button" parent="SlotList/Slot0"]
+custom_minimum_size = Vector2(140, 52)
+focus_mode = 2
+text = "Delete"
+disabled = true
+theme_override_font_sizes/font_size = 20
+
+[node name="Slot1" type="HBoxContainer" parent="SlotList"]
+theme_override_constants/separation = 16
+
+[node name="InfoLabel" type="Label" parent="SlotList/Slot1"]
+custom_minimum_size = Vector2(600, 0)
+text = "— Empty —"
+theme_override_font_sizes/font_size = 22
+
+[node name="BtnLoad" type="Button" parent="SlotList/Slot1"]
+custom_minimum_size = Vector2(140, 52)
+focus_mode = 2
+text = "Load"
+disabled = true
+theme_override_font_sizes/font_size = 20
+
+[node name="BtnDelete" type="Button" parent="SlotList/Slot1"]
+custom_minimum_size = Vector2(140, 52)
+focus_mode = 2
+text = "Delete"
+disabled = true
+theme_override_font_sizes/font_size = 20
+
+[node name="Slot2" type="HBoxContainer" parent="SlotList"]
+theme_override_constants/separation = 16
+
+[node name="InfoLabel" type="Label" parent="SlotList/Slot2"]
+custom_minimum_size = Vector2(600, 0)
+text = "— Empty —"
+theme_override_font_sizes/font_size = 22
+
+[node name="BtnLoad" type="Button" parent="SlotList/Slot2"]
+custom_minimum_size = Vector2(140, 52)
+focus_mode = 2
+text = "Load"
+disabled = true
+theme_override_font_sizes/font_size = 20
+
+[node name="BtnDelete" type="Button" parent="SlotList/Slot2"]
+custom_minimum_size = Vector2(140, 52)
+focus_mode = 2
+text = "Delete"
+disabled = true
+theme_override_font_sizes/font_size = 20
+
+[node name="BtnBack" type="Button" parent="."]
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -100.0
+offset_top = -80.0
+offset_right = 100.0
+offset_bottom = -24.0
+focus_mode = 2
+text = "Back"
+theme_override_font_sizes/font_size = 22

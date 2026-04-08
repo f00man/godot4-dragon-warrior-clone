@@ -271,16 +271,17 @@ func _serialize_party_member(member):
 	return {
 		# Store the resource path so we can re-load base data from disk on load
 		"resource_path": member.resource_path if member.resource_path != "" else "",
-		# Core identity
-		"member_name":   member.get("member_name", "Unknown"),
+		# Core identity — direct property access; Object.get() in Godot 4 does not
+		# accept a second default-value argument the way Python's dict.get() does.
+		"member_name":   member.member_name,
 		# Current HP (may differ from max due to damage taken)
-		"current_hp":    member.get("current_hp", 0),
+		"current_hp":    member.current_hp,
 		# Current MP (may differ from max due to spell use)
-		"current_mp":    member.get("current_mp", 0),
+		"current_mp":    member.current_mp,
 		# Experience points earned — determines level
-		"experience":    member.get("experience", 0),
+		"experience":    member.experience,
 		# Current level derived from experience, cached here for the summary screen
-		"level":         member.get("level", 1)
+		"level":         member.level
 	}
 
 # ------------------------------------------------------------------------------
@@ -308,15 +309,47 @@ func _deserialize_into_game_state(data, slot):
 		pos_dict.get("y", 0)
 	)
 
-	# Restore party — for now we store the raw dicts; once PartyMemberData
-	# resources are defined this should load the .tres and apply saved stats.
-	# TODO: replace with full resource loading once PartyMemberData is implemented
+	# Restore party — load the base .tres resource for each member then overlay
+	# the mutable fields (current_hp, current_mp, experience, level) from the
+	# save data. This ensures all read-only stats (max_hp, attack, etc.) are
+	# sourced from the authoritative resource file rather than from JSON, which
+	# means a balance change in the .tres automatically applies on next load.
 	var party_data = data.get("party", [])
 	GameState.party = []
 	for member_dict in party_data:
-		# Skip any empty/null entries that crept in from corrupted data
-		if typeof(member_dict) == TYPE_DICTIONARY and not member_dict.is_empty():
-			GameState.party.append(member_dict)
+		# Skip nulls or empty dicts that may result from corrupted saves
+		if typeof(member_dict) != TYPE_DICTIONARY or member_dict.is_empty():
+			continue
+
+		var resource_path = member_dict.get("resource_path", "")
+		var member = null
+
+		# Prefer loading from the stored resource path so the member retains
+		# all base stats defined in the .tres file
+		if resource_path != "" and ResourceLoader.exists(resource_path):
+			member = load(resource_path)
+
+		# Fallback: if the path is missing or the file was moved, reconstruct
+		# by member_name — scan the known party_members directory
+		if member == null:
+			var fallback_name = member_dict.get("member_name", "").to_lower()
+			var fallback_path = "res://resources/party_members/%s.tres" % fallback_name
+			if ResourceLoader.exists(fallback_path):
+				member = load(fallback_path)
+
+		if member == null:
+			push_warning("SaveManager: could not restore party member from dict: %s" % str(member_dict))
+			continue
+
+		# Overlay the mutable fields saved at the time of the save.
+		# These may differ from the .tres defaults due to damage, spending MP,
+		# or gaining XP since the resource was last edited.
+		member.current_hp  = member_dict.get("current_hp",  member.current_hp)
+		member.current_mp  = member_dict.get("current_mp",  member.current_mp)
+		member.experience  = member_dict.get("experience",  member.experience)
+		member.level       = member_dict.get("level",       member.level)
+
+		GameState.party.append(member)
 
 	# Emit signals so any already-open UI refreshes with the restored data
 	GameState.emit_signal("gold_changed", GameState.gold)

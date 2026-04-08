@@ -69,9 +69,22 @@ func _ready():
 	# re-created or freed.
 	_build_overlay()
 
+	# Instantiate the HUD and pause menu once here on SceneManager so both are
+	# available in every scene without any per-scene setup. SceneManager persists
+	# across all scene changes so they survive transitions automatically.
+	_build_hud()
+	_build_pause_menu()
+
 	# Seed _current_scene_path from GameState so get_current_scene() is
 	# accurate even before the first explicit transition.
 	_current_scene_path = GameState.current_scene
+
+	# SC2: Wire transition_finished → EventManager.check_events_for_scene so
+	# scene-entry events are evaluated automatically after every transition.
+	# SceneManager is an autoload and EventManager is also an autoload, so both
+	# are guaranteed to exist here. We connect in code so the dependency is
+	# explicit and version-controlled rather than hidden in the editor.
+	transition_finished.connect(EventManager.check_events_for_scene)
 
 # ------------------------------------------------------------------------------
 # Public API
@@ -152,6 +165,36 @@ func is_transitioning():
 # ------------------------------------------------------------------------------
 # Private helpers
 # ------------------------------------------------------------------------------
+
+# Instantiates hud.tscn and attaches it to a dedicated CanvasLayer on this
+# autoload. Rendered at layer 5 — above world/battle content but below
+# dialogue (7), pause menu (90), and the fade overlay (100).
+func _build_hud():
+	var hud_layer = CanvasLayer.new()
+	hud_layer.layer = 5
+	hud_layer.name = "HUDLayer"
+	add_child(hud_layer)
+
+	var hud_scene = load("res://scenes/ui/hud.tscn")
+	var hud = hud_scene.instantiate()
+	hud.name = "HUD"
+	hud_layer.add_child(hud)
+
+
+# Instantiates pause_menu.tscn and attaches it to a dedicated CanvasLayer on
+# this autoload. Because SceneManager never leaves the scene tree, the pause
+# menu is available in every scene without any per-scene setup.
+func _build_pause_menu():
+	var pause_layer = CanvasLayer.new()
+	pause_layer.layer = 90          # above game UI, below fade overlay (100)
+	pause_layer.name = "PauseMenuLayer"
+	add_child(pause_layer)
+
+	var pause_scene = load("res://scenes/ui/pause_menu.tscn")
+	var pause_menu = pause_scene.instantiate()
+	pause_menu.name = "PauseMenu"
+	pause_layer.add_child(pause_menu)
+
 
 # Creates the CanvasLayer and ColorRect overlay nodes and attaches them to
 # this autoload. Called once in _ready(). The overlay starts fully transparent

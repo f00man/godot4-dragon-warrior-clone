@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PartyMemberData" load_steps=2 format=3 uid="uid://partymember_hero"]
+
+[ext_resource type="Script" path="res://scripts/resources/party_member_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+member_name = "Hero"
+max_hp = 50
+current_hp = 50
+max_mp = 20
+current_mp = 20
+attack = 10
+defense = 5
+speed = 5
+level = 1
+experience = 0

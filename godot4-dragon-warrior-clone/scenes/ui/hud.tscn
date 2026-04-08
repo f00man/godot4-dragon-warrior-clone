@@ -1,0 +1,66 @@
+[gd_scene format=3 uid="uid://hud1"]
+
+; External script attached to the HUD root node.
+[ext_resource type="Script" path="res://scenes/ui/hud.gd" id="1"]
+
+; ---------------------------------------------------------------------------
+; Scene tree
+; ---------------------------------------------------------------------------
+
+; Root node — Control with manual positioning so it sits in the top-left
+; corner of whatever viewport it is placed in. layout_mode=0 means the
+; position is controlled by offset_* properties, not anchors.
+; offset_right/offset_bottom define the panel dimensions: 320x160 px.
+[node name="HUD" type="Control"]
+layout_mode = 0
+offset_right = 320.0
+offset_bottom = 160.0
+script = ExtResource("1")
+
+; Panel gives the HUD a dark background so the labels are readable over the
+; overworld tiles. It fills the entire HUD Control area (anchor stretch).
+; layout_mode=1 with anchors 0,0,1,1 means the Panel stretches to fill its
+; parent Control exactly, so resizing the HUD root also resizes the Panel.
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+
+; VBoxContainer holds the four stat labels with consistent spacing.
+; 16px margins on all sides keep the text away from the Panel edges.
+; The separation property adds 8px between each label pair.
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+theme_override_constants/separation = 8
+
+; Hero name — shows leader's member_name, or "---" when party is empty.
+[node name="LabelName" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; HP line — format "HP    12 / 50"
+[node name="LabelHP" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; MP line — format "MP    4 / 20"
+[node name="LabelMP" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; Gold line — format "Gold  250 G"
+[node name="LabelGold" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22

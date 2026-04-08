@@ -1,0 +1,287 @@
+[gd_scene load_steps=16 format=3 uid="uid://townsample1"]
+
+; External resources — scripts and sub-scenes used by nodes in this scene.
+[ext_resource type="Script" path="res://scenes/towns/town_sample.gd" id="1_townsamplescript1"]
+[ext_resource type="Script" path="res://scripts/entities/player.gd" id="2_playerscript"]
+[ext_resource type="Script" path="res://scripts/systems/encounter_manager.gd" id="3_encountermgr"]
+[ext_resource type="Script" path="res://scenes/towns/npc_elder.gd" id="4_npcelder1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/dialogue_box.tscn" id="5_dialoguebox"]
+[ext_resource type="Script" path="res://scenes/towns/chest.gd" id="6_chestscript"]
+[ext_resource type="Script" path="res://scenes/towns/npc_merchant.gd" id="7_merchantscript"]
+
+; Player collision shape — one full 32x32 tile, matching the overworld player.
+[sub_resource type="RectangleShape2D" id="1_playershape"]
+size = Vector2(32, 32)
+
+; NPC_Elder body collision shape — narrow upright rectangle matching the
+; 20x28 ColorRect placeholder sprite so physics contact feels accurate.
+[sub_resource type="RectangleShape2D" id="2_elderbodyshape"]
+size = Vector2(20, 28)
+
+; InteractionZone collision shape — 40x40 square centred on the NPC so the
+; player triggers dialogue from any adjacent tile, not just the exact overlap.
+[sub_resource type="RectangleShape2D" id="3_interactionshape"]
+size = Vector2(40, 40)
+
+; OverworldExit collision shape — wide enough to span the road/path at the south
+; edge of the town (96 px = 3 tiles), shallow enough (32 px = 1 tile) to act as
+; a threshold the player crosses rather than an invisible wall they stand inside.
+[sub_resource type="RectangleShape2D" id="4_exitshape"]
+size = Vector2(96, 32)
+
+; Chest InteractionZone collision shape — 48x48 square, slightly larger than the
+; 32x32 chest sprite so the player can trigger it from any adjacent tile without
+; needing pixel-perfect positioning.
+[sub_resource type="RectangleShape2D" id="5_chestinteractionshape"]
+size = Vector2(48, 48)
+
+; NPC_Merchant body collision shape — matches the 20x28 placeholder ColorRect
+; so physics contact aligns with the visible sprite.
+[sub_resource type="RectangleShape2D" id="6_merchantbodyshape"]
+size = Vector2(20, 28)
+
+; NPC_Merchant InteractionZone collision shape — 40x40 square centred on the
+; merchant, same generous detection radius used by NPC_Elder.
+[sub_resource type="RectangleShape2D" id="7_merchantinteractionshape"]
+size = Vector2(40, 40)
+
+; ---------------------------------------------------------------------------
+; Scene tree
+; ---------------------------------------------------------------------------
+
+; Root node — Node2D with the town script attached.
+[node name="TownSample" type="Node2D"]
+script = ExtResource("1_townsamplescript1")
+
+; Ground layer — TileMapLayer for the town floor tiles.
+; TODO: Assign a tileset in the Godot editor once town art assets are ready.
+; Using TileMapLayer (not the deprecated TileMap) per project standards.
+[node name="Ground" type="TileMapLayer" parent="."]
+
+; ---------------------------------------------------------------------------
+; Player — same CharacterBody2D + player.gd setup used in the overworld.
+; No separate player.tscn exists; the node is built inline here just as it
+; is in scenes/world/overworld.tscn. Starting position: tile (5,5) = pixel (160,160).
+; ---------------------------------------------------------------------------
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(160, 160)
+script = ExtResource("2_playerscript")
+
+; Player collision shape — centred at (16,16) to align with the 32x32 tile origin.
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+position = Vector2(16, 16)
+shape = SubResource("1_playershape")
+
+; Cyan ColorRect placeholder sprite — matches the overworld player visual.
+[node name="PlaceholderRect" type="ColorRect" parent="Player"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0, 1, 1, 1)
+
+; Camera follows the player because it is a child of the Player node.
+; No position-tracking code needed — Godot handles this automatically.
+[node name="Camera2D" type="Camera2D" parent="Player"]
+enabled = true
+zoom = Vector2(4, 4)
+
+; ---------------------------------------------------------------------------
+; NPC_Elder — placeholder elder character the player can speak to.
+; ---------------------------------------------------------------------------
+[node name="NPC_Elder" type="CharacterBody2D" parent="."]
+; Tile (8,4) = pixel (256,128) — far enough from the player's start position
+; to give room to walk but close enough to find easily during testing.
+position = Vector2(256, 128)
+script = ExtResource("4_npcelder1")
+
+; Elder body collision shape — sized to the 20x28 placeholder rect.
+; Offset (10,14) centres the shape on the node origin at the rect's top-left.
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_Elder"]
+position = Vector2(10, 14)
+shape = SubResource("2_elderbodyshape")
+
+; Placeholder sprite for the Elder — a blue-ish rectangle standing in for
+; a proper sprite until art assets are assigned.
+; Offset (-10,-14) centres the rect on the node origin so physics and visual align.
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_Elder"]
+offset_left = -10.0
+offset_top = -14.0
+offset_right = 10.0
+offset_bottom = 14.0
+color = Color(0.4, 0.6, 0.9, 1.0)
+
+; "?" label floats above the elder to signal interactability.
+; Centred horizontally above the sprite; will be replaced by an indicator
+; animation when the player enters range, once that system is built.
+[node name="Label" type="Label" parent="NPC_Elder"]
+layout_mode = 0
+offset_left = -10.0
+offset_top = -30.0
+offset_right = 10.0
+offset_bottom = -14.0
+text = "?"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 10
+
+; InteractionZone — Area2D detects when the player is in talking range.
+; Its body_entered/body_exited signals are connected in npc_elder.gd._ready().
+[node name="InteractionZone" type="Area2D" parent="NPC_Elder"]
+
+; 40x40 collision shape centred on the NPC origin — gives a generous detection
+; radius so the player doesn't have to stand pixel-perfect to talk.
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_Elder/InteractionZone"]
+shape = SubResource("3_interactionshape")
+
+; ---------------------------------------------------------------------------
+; EncounterManager — reused from the overworld but with encounter_rate = 0.0
+; so no battles trigger inside the town. Towns are always safe zones.
+; ---------------------------------------------------------------------------
+[node name="EncounterManager" type="Node" parent="."]
+script = ExtResource("3_encountermgr")
+; Override the base encounter rate to zero — no random battles in towns.
+base_encounter_rate = 0.0
+
+; ---------------------------------------------------------------------------
+; DialogueLayer — CanvasLayer at layer 7 so the DialogueBox renders in screen
+; space, independent of the Camera2D zoom and position. Without this wrapper
+; the Control node lives in world space and gets scaled/shifted by the camera.
+; ---------------------------------------------------------------------------
+[node name="DialogueLayer" type="CanvasLayer" parent="."]
+layer = 7
+
+; DialogueBox — instanced from the shared UI scene. Connects to
+; EventManager.dialogue_requested in its own _ready() so NPC dialogue flows
+; through EventManager automatically.
+[node name="DialogueBox" parent="DialogueLayer" instance=ExtResource("5_dialoguebox")]
+
+; ---------------------------------------------------------------------------
+; Chest — one-time treasure chest that gives the player a Royal Scroll.
+; Position (192, 160) = tile (6, 5), one tile right of the fixed town spawn
+; at tile (5, 5) = pixel (160, 160). Immediately visible on scene load.
+; chest.gd checks the world flag "chest_town_royal_scroll" on _ready(); if it
+; is already set the chest is shown as depleted (alpha 0.4) immediately.
+; ---------------------------------------------------------------------------
+[node name="Chest" type="Node2D" parent="."]
+position = Vector2(192, 160)
+script = ExtResource("6_chestscript")
+
+; Gold/brown ColorRect placeholder — evokes a classic wooden chest.
+; 32x32 matches one full tile so it sits flush on the ground layer.
+[node name="ChestRect" type="ColorRect" parent="Chest"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.7, 0.5, 0.1, 1.0)
+
+; "?" label above the chest signals that this object is interactable.
+; Centred horizontally at (-8, -20) relative to the chest origin so it floats
+; above the top edge of the 32x32 sprite.
+[node name="Label" type="Label" parent="Chest"]
+layout_mode = 0
+offset_left = -8.0
+offset_top = -20.0
+offset_right = 24.0
+offset_bottom = 0.0
+text = "?"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+
+; InteractionZone — Area2D that detects the player entering pickup range.
+; body_entered/body_exited signals are connected in chest.gd._ready().
+[node name="InteractionZone" type="Area2D" parent="Chest"]
+
+; 48x48 collision shape centred on the chest's Area2D origin — slightly larger
+; than the 32x32 sprite to give a forgiving pickup radius.
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Chest/InteractionZone"]
+shape = SubResource("5_chestinteractionshape")
+
+; ---------------------------------------------------------------------------
+; NPC_Merchant — herb vendor. Sells one herb for 10 gold on interaction.
+; Position (224, 160) = tile (7, 5), one tile right of the chest at (6, 5),
+; so both interactables are reachable immediately from the player spawn.
+; See npc_merchant.gd for sale logic and the TODO note about a full shop UI.
+; ---------------------------------------------------------------------------
+[node name="NPC_Merchant" type="CharacterBody2D" parent="."]
+position = Vector2(224, 160)
+script = ExtResource("7_merchantscript")
+
+; Merchant body collision shape — centred at (10, 14) to align the 20x28
+; shape on the node origin (same offset pattern as NPC_Elder).
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_Merchant"]
+position = Vector2(10, 14)
+shape = SubResource("6_merchantbodyshape")
+
+; Golden-yellow ColorRect placeholder — visually distinct from the blue elder
+; so the player can tell the two NPCs apart before proper sprites are added.
+; Offset (-10, -14) centres the rect on the node origin so physics and visual align.
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_Merchant"]
+offset_left = -10.0
+offset_top = -14.0
+offset_right = 10.0
+offset_bottom = 14.0
+color = Color(0.9, 0.7, 0.2, 1.0)
+
+; "Shop" label above the merchant — tells the player this NPC sells items.
+; Positioned the same way as NPC_Elder's "?" label for visual consistency.
+[node name="Label" type="Label" parent="NPC_Merchant"]
+layout_mode = 0
+offset_left = -16.0
+offset_top = -30.0
+offset_right = 26.0
+offset_bottom = -14.0
+text = "Shop"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 10
+
+; InteractionZone — Area2D for detecting the player entering talking range.
+; body_entered/body_exited signals are connected in npc_merchant.gd._ready().
+[node name="InteractionZone" type="Area2D" parent="NPC_Merchant"]
+
+; 40x40 collision shape centred on the merchant origin — matches NPC_Elder's
+; zone size for consistent interaction feel across all NPCs.
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_Merchant/InteractionZone"]
+shape = SubResource("7_merchantinteractionshape")
+
+; ---------------------------------------------------------------------------
+; OverworldExit — south exit trigger. When the player CharacterBody2D overlaps
+; this Area2D, town_sample.gd calls SceneManager.transition_back() to return
+; to wherever the player came from (normally the overworld).
+;
+; Position (160, 300) places the trigger near the bottom of the default town
+; viewport, centred horizontally on a 320-wide scene. Adjust the X or Y to
+; match your actual road/path art once tiles are assigned.
+; ---------------------------------------------------------------------------
+[node name="OverworldExit" type="Area2D" parent="."]
+position = Vector2(160, 300)
+
+; Collision shape — 96×32 rectangle, centred on the Area2D origin by default.
+; The 96 px width covers a 3-tile road; the 32 px height is one tile so the
+; trigger fires the moment the player steps onto the threshold.
+[node name="CollisionShape2D" type="CollisionShape2D" parent="OverworldExit"]
+shape = SubResource("4_exitshape")
+
+; Brown doorstep hint — a 96×16 ColorRect that gives the player a visual cue
+; that this strip of ground is an exit. Offset_top = 8 drops it below the
+; Area2D origin so it sits flush with the lower half of the trigger zone.
+; Alpha 0.8 keeps it visible but not distractingly opaque.
+[node name="DoorstepRect" type="ColorRect" parent="OverworldExit"]
+offset_left = -48.0
+offset_top = 8.0
+offset_right = 48.0
+offset_bottom = 24.0
+color = Color(0.6, 0.4, 0.1, 0.8)
+
+; "▼ Exit" label — sits just above the doorstep rect so the player can read it
+; before stepping on the trigger. Offset_top = -18 places it 2 px above the
+; top of the doorstep ColorRect. Centred horizontally on the exit zone.
+[node name="ExitLabel" type="Label" parent="OverworldExit"]
+layout_mode = 0
+offset_left = -48.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = 0.0
+text = "▼ Exit"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18

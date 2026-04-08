@@ -2,8 +2,9 @@
 # overworld.gd
 # Part of: godot4-dragon-warrior-clone
 # Description: Root script for the overworld scene. Wires up player signals,
-#              keeps GameState in sync with player position, and will later
-#              handle random encounter checks and scene-entry events.
+#              keeps GameState in sync with player position, and handles the
+#              town-entrance trigger zone. The TileMapLayer is configured via
+#              the Godot editor — no tileset generation happens in code.
 # Attached to: Node2D (Overworld) in scenes/world/overworld.tscn
 # ==============================================================================
 
@@ -20,6 +21,10 @@ extends Node2D
 # _ready() so it receives every step.
 @onready var encounter_manager = $EncounterManager
 
+# The Area2D zone at the south edge of the map. When the player walks into it
+# they are transported to the sample town scene.
+@onready var town_entrance = $TownEntrance
+
 
 func _ready():
 	# Resume playtime when the overworld is ready — the player now has control.
@@ -27,6 +32,18 @@ func _ready():
 	# resumes here rather than in SceneManager so each scene is responsible for
 	# its own playtime contract.
 	GameState.resume_playtime()
+
+	# Assign physics collision layers so the CharacterBody2D player stops when
+	# it walks into wall tiles painted in the editor.
+	# Layer 1 matches the TileSet's physics layer so move_and_collide stops at
+	# walls. Using layer 1 (not 2) also means Area2D interaction zones — which
+	# default to collision_mask = 1 — can detect the player without extra setup.
+	player.collision_layer = 1
+	player.collision_mask = 1
+
+	# Wire the town entrance trigger so walking south into the corridor fires
+	# a scene transition to the sample town.
+	town_entrance.body_entered.connect(_on_town_entrance_body_entered)
 
 	# Connect player movement signal so GameState stays in sync without the
 	# player script needing to know about GameState directly. Signals keep the
@@ -40,17 +57,25 @@ func _ready():
 
 	# Check for any events that should fire when the player enters the overworld
 	# (e.g. a cutscene triggered by a world flag, a quest update, etc.).
-	# This is a stub call — EventManager.check_events_for_scene() has no
-	# real behaviour yet (see TODO E3 in CLAUDE.md).
 	EventManager.check_events_for_scene("overworld")
 
 
+# ---------------------------------------------------------------------------
+# Signal handlers
+# ---------------------------------------------------------------------------
+
+# Called every time the player successfully moves to a new tile.
+# Updates GameState so the save system always has the correct position.
+# This is the single write-point for player_position — the Player node itself
+# never touches GameState directly (loose coupling via signals).
 func _on_player_moved(new_tile_pos):
-	# Keep GameState in sync so SaveManager always captures the correct tile
-	# position when the player saves. This is the single write-point for
-	# player_position — the Player node itself never touches GameState directly.
-	#
-	# The future EncounterManager will read step_count from the Player node
-	# directly (via a group lookup or a direct reference) rather than through
-	# this signal, so encounter logic does not need to live here.
 	GameState.set_location(GameState.current_scene, new_tile_pos)
+
+
+# Called when any physics body enters the TownEntrance Area2D.
+# We check for the "player" group to avoid reacting to stray physics bodies
+# (e.g. if other CharacterBody2D NPCs are ever added to the scene).
+func _on_town_entrance_body_entered(body):
+	# Only fire for the player, not stray physics bodies.
+	if body.is_in_group("player"):
+		SceneManager.transition_to("res://scenes/towns/town_sample.tscn")

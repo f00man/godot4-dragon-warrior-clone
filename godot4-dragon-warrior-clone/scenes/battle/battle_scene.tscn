@@ -1,7 +1,9 @@
-[gd_scene load_steps=2 format=3 uid="uid://battlescene1"]
+[gd_scene load_steps=4 format=3 uid="uid://battlescene1"]
 
-; External scripts referenced by nodes in this scene.
+; External scripts and packed scenes referenced by nodes in this scene.
 [ext_resource type="Script" path="res://scenes/battle/battle_scene.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/systems/battle_manager.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/battle_ui.tscn" id="3"]
 
 ; ---------------------------------------------------------------------------
 ; Scene tree
@@ -11,8 +13,8 @@
 [node name="BattleScene" type="Node2D"]
 script = ExtResource("1")
 
-; Full-screen dark background. Fills the entire viewport via FULL_RECT anchors.
-; Dark gray (#141414) evokes the NES Dragon Warrior battle screen.
+; Full-screen dark background. ColorRect as direct child of Node2D is fine for
+; simple full-screen fills — it uses the viewport rect automatically.
 [node name="Background" type="ColorRect" parent="."]
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -22,58 +24,18 @@ offset_right = 0.0
 offset_bottom = 0.0
 color = Color(0.08, 0.08, 0.08, 1.0)
 
-; Container for the enemy sprite area. Positioned in the upper portion of the
-; screen, above the bottom panel. No script — purely structural.
-[node name="EnemyArea" type="Control" parent="."]
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 0.0
-offset_bottom = -120.0
+; BattleManager — pure logic node, no visual representation.
+[node name="BattleManager" type="Node" parent="."]
+script = ExtResource("2")
 
-; Placeholder rectangle standing in for the enemy sprite until real art is
-; added. Roughly centred in the viewport above the bottom panel.
-; NOTE: offset_left/top/right/bottom are approximate for a ~640x400 area
-; above the panel — adjust these once the real viewport size is confirmed
-; in the Godot editor Project Settings.
-[node name="EnemyPlaceholder" type="ColorRect" parent="EnemyArea"]
-offset_left = 220.0
-offset_top = 100.0
-offset_right = 420.0
-offset_bottom = 300.0
-color = Color(0.3, 0.3, 0.3, 1.0)
+; UILayer — CanvasLayer that hosts all UI Control nodes.
+; Controls inside a CanvasLayer always resolve their anchors against the full
+; viewport size, regardless of the Node2D hierarchy below. Without this,
+; anchor_top=1 on BottomPanel resolves to 1×0=0 and renders off-screen.
+[node name="UILayer" type="CanvasLayer" parent="."]
+layer = 10
 
-; Label showing the enemy's name. Positioned just below the placeholder rect.
-; Text and position will be set at runtime by battle_manager.gd once that
-; system is implemented.
-[node name="EnemyNameLabel" type="Label" parent="EnemyArea"]
-offset_left = 220.0
-offset_top = 304.0
-offset_right = 420.0
-offset_bottom = 324.0
-text = "Enemy Name"
-horizontal_alignment = 1
-
-; Bottom panel — full width, 120 px tall, pinned to the bottom of the viewport.
-; anchor_top=1 + anchor_bottom=1 with offset_top=-120 anchors it to the bottom
-; edge regardless of viewport height. Will hold party HP/MP bars and action menu.
-[node name="BottomPanel" type="ColorRect" parent="."]
-anchor_left = 0.0
-anchor_right = 1.0
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 0.0
-offset_top = -120.0
-offset_right = 0.0
-offset_bottom = 0.0
-color = Color(0.12, 0.12, 0.12, 1.0)
-
-; Placeholder label inside the bottom panel. Will be replaced with actual
-; party member HP/MP bars and the action menu when battle_manager.gd is built.
-[node name="PartyPanelLabel" type="Label" parent="BottomPanel"]
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 200.0
-offset_bottom = 32.0
-text = "Party Panel"
+; BattleUI — instanced inside UILayer so anchor-based layout works correctly.
+; battle_scene.gd accesses it via $UILayer/BattleUI and calls setup() before
+; start_battle() so the battle_started signal is already connected.
+[node name="BattleUI" parent="UILayer" instance=ExtResource("3")]

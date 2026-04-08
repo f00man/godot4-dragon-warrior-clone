@@ -1,0 +1,247 @@
+[gd_scene format=3 uid="uid://pausemenu1"]
+
+; External script attached to the PauseMenu root node.
+[ext_resource type="Script" path="res://scenes/ui/pause_menu.gd" id="1"]
+
+; ---------------------------------------------------------------------------
+; Scene tree
+; ---------------------------------------------------------------------------
+
+; Root — Control node that covers the full viewport.
+; process_mode = PROCESS_MODE_ALWAYS (6) so _process() and Input polling
+; continue running while get_tree().paused = true. Without this the menu
+; would never receive the ui_cancel signal to close itself after pausing.
+; anchor_right = 1 / anchor_bottom = 1 stretches the Control to fill whatever
+; parent container (CanvasLayer) it is placed in.
+[node name="PauseMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+process_mode = 3
+script = ExtResource("1")
+
+; Timer used to auto-dismiss the "Game Saved!" confirmation label after 1.5 s.
+; one_shot = true means it fires once and stops — we call .start() manually
+; each time a save completes.
+[node name="SaveConfirmTimer" type="Timer" parent="."]
+wait_time = 1.5
+one_shot = true
+autostart = false
+
+; ---------------------------------------------------------------------------
+; Overlay — full-screen dark panel that dims the game world behind the menu.
+; Color(0, 0, 0, 0.75) = 75 % opaque black, matching the task specification.
+; Stretches to fill the PauseMenu Control via anchors_preset = 15.
+; ---------------------------------------------------------------------------
+[node name="Overlay" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.75)
+
+; ---------------------------------------------------------------------------
+; Panel — the centered white content container (640 x 560 px).
+; Positioned with anchors at the centre of the overlay, then offset by
+; half the panel dimensions so it is truly centred at all resolutions.
+; anchor 0.5/0.5 on both sides gives us the viewport midpoint;
+; offset_left = -320 and offset_top = -280 shift the top-left corner up
+; and left by half of 640 and 560 respectively, and offset_right/bottom
+; complete the 640 x 560 rectangle.
+; ---------------------------------------------------------------------------
+[node name="Panel" type="Panel" parent="Overlay"]
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -280.0
+offset_right = 320.0
+offset_bottom = 280.0
+
+; ---------------------------------------------------------------------------
+; VBox — master vertical layout inside the Panel. Gives 24 px margins all
+; around and 16 px of vertical separation between the three sections.
+; ---------------------------------------------------------------------------
+[node name="VBox" type="VBoxContainer" parent="Overlay/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = -24.0
+theme_override_constants/separation = 16
+
+; ---------------------------------------------------------------------------
+; TopSection — party status block (name, HP, MP, XP, Gold).
+; VBoxContainer with 8 px separation between each stat line.
+; ---------------------------------------------------------------------------
+[node name="TopSection" type="VBoxContainer" parent="Overlay/Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+; Hero name + level  →  "Erdrick   Lv 3"
+[node name="LabelName" type="Label" parent="Overlay/Panel/VBox/TopSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+
+; HP line  →  "HP    12 / 50"
+[node name="LabelHP" type="Label" parent="Overlay/Panel/VBox/TopSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; MP line  →  "MP    4 / 20"
+[node name="LabelMP" type="Label" parent="Overlay/Panel/VBox/TopSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; XP line  →  "XP    47"
+[node name="LabelXP" type="Label" parent="Overlay/Panel/VBox/TopSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; Gold line  →  "Gold  250 G"
+[node name="LabelGold" type="Label" parent="Overlay/Panel/VBox/TopSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; ---------------------------------------------------------------------------
+; HSeparator — thin visual rule between the status block and inventory.
+; ---------------------------------------------------------------------------
+[node name="HSep1" type="HSeparator" parent="Overlay/Panel/VBox"]
+layout_mode = 2
+
+; ---------------------------------------------------------------------------
+; MiddleSection — inventory block.
+; VBoxContainer holding the section title and the scrollable item list.
+; SIZE_EXPAND_FILL so it grows to take remaining vertical space between the
+; separator above and the bottom section below.
+; ---------------------------------------------------------------------------
+[node name="MiddleSection" type="VBoxContainer" parent="Overlay/Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+; "Inventory" heading label
+[node name="LabelInventoryTitle" type="Label" parent="Overlay/Panel/VBox/MiddleSection"]
+layout_mode = 2
+text = "Inventory"
+theme_override_font_sizes/font_size = 22
+
+; ScrollContainer so long item lists don't overflow the panel
+[node name="InventoryScroll" type="ScrollContainer" parent="Overlay/Panel/VBox/MiddleSection"]
+layout_mode = 2
+size_flags_vertical = 3
+
+; InventoryList — VBoxContainer rebuilt from scratch on every _refresh() call.
+; pause_menu.gd adds child HBoxContainer rows here: one per inventory entry.
+[node name="InventoryList" type="VBoxContainer" parent="Overlay/Panel/VBox/MiddleSection/InventoryScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+; ---------------------------------------------------------------------------
+; HSeparator — thin rule between inventory and the action buttons.
+; ---------------------------------------------------------------------------
+[node name="HSep2" type="HSeparator" parent="Overlay/Panel/VBox"]
+layout_mode = 2
+
+; ---------------------------------------------------------------------------
+; BottomSection — contains two mutually exclusive child containers:
+;   BottomNormal  — shown at rest (Save + Close buttons)
+;   BottomSlots   — shown after pressing Save (3 slot buttons + confirmation)
+; Only one is visible at a time; pause_menu.gd toggles visibility in code.
+; ---------------------------------------------------------------------------
+[node name="BottomSection" type="VBoxContainer" parent="Overlay/Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+; ---------------------------------------------------------------------------
+; BottomNormal — the default bottom state.
+; HBoxContainer with Save (left) and Close (right), plus a hint label below.
+; ---------------------------------------------------------------------------
+[node name="BottomNormal" type="VBoxContainer" parent="Overlay/Panel/VBox/BottomSection"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+; Row holding Save and Close buttons side by side
+[node name="ButtonRow" type="HBoxContainer" parent="Overlay/Panel/VBox/BottomSection/BottomNormal"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+; Save button — disabled at runtime unless player holds a Royal Scroll.
+; pause_menu.gd sets disabled = true/false in _refresh_save_button().
+[node name="BtnSave" type="Button" parent="Overlay/Panel/VBox/BottomSection/BottomNormal/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Save"
+focus_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; Close button — always enabled. Hides the pause menu and unpauses the tree.
+[node name="BtnClose" type="Button" parent="Overlay/Panel/VBox/BottomSection/BottomNormal/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Close"
+focus_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; "Requires Royal Scroll" hint — shown below the button row when Save is disabled.
+; pause_menu.gd toggles its visibility via _refresh_save_button().
+[node name="LabelNoScroll" type="Label" parent="Overlay/Panel/VBox/BottomSection/BottomNormal"]
+layout_mode = 2
+text = "Requires Royal Scroll"
+theme_override_font_sizes/font_size = 18
+
+; ---------------------------------------------------------------------------
+; BottomSlots — shown after pressing Save. Three slot buttons in a row, with
+; a "Game Saved!" / "Save Failed!" confirmation label below them.
+; Hidden by default; pause_menu.gd shows it when Save is pressed.
+; ---------------------------------------------------------------------------
+[node name="BottomSlots" type="VBoxContainer" parent="Overlay/Panel/VBox/BottomSection"]
+layout_mode = 2
+visible = false
+theme_override_constants/separation = 8
+
+; Row of three slot buttons
+[node name="SlotRow" type="HBoxContainer" parent="Overlay/Panel/VBox/BottomSection/BottomSlots"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+; Slot 1 button (maps to slot index 0 in SaveManager)
+[node name="BtnSlot0" type="Button" parent="Overlay/Panel/VBox/BottomSection/BottomSlots/SlotRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Slot 1"
+focus_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; Slot 2 button (maps to slot index 1 in SaveManager)
+[node name="BtnSlot1" type="Button" parent="Overlay/Panel/VBox/BottomSection/BottomSlots/SlotRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Slot 2"
+focus_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; Slot 3 button (maps to slot index 2 in SaveManager)
+[node name="BtnSlot2" type="Button" parent="Overlay/Panel/VBox/BottomSection/BottomSlots/SlotRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Slot 3"
+focus_mode = 2
+theme_override_font_sizes/font_size = 22
+
+; Confirmation label — hidden until a save attempt completes.
+; Shows "Game Saved!" on success or "Save Failed!" on error.
+; Auto-dismissed after 1.5 s by SaveConfirmTimer.
+[node name="LabelSavedConfirm" type="Label" parent="Overlay/Panel/VBox/BottomSection/BottomSlots"]
+layout_mode = 2
+visible = false
+text = "Game Saved!"
+theme_override_font_sizes/font_size = 22

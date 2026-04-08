@@ -29,13 +29,13 @@ anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 1.0
 anchor_bottom = 0.0
-offset_top = 70.0
-offset_bottom = 120.0
+offset_top = 160.0
+offset_bottom = 280.0
 grow_horizontal = 2
 text = "DRAGON QUEST CLONE"
 label_settings = null
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 72
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -43,29 +43,32 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -80.0
-offset_top = -60.0
-offset_right = 80.0
-offset_bottom = 60.0
+offset_left = -200.0
+offset_top = -130.0
+offset_right = 200.0
+offset_bottom = 130.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 20
 
 [node name="BtnNewGame" type="Button" parent="VBoxContainer"]
 layout_mode = 2
-custom_minimum_size = Vector2(160, 36)
+custom_minimum_size = Vector2(400, 64)
 focus_mode = 2
 text = "New Game"
+theme_override_font_sizes/font_size = 26
 
 [node name="BtnContinue" type="Button" parent="VBoxContainer"]
 layout_mode = 2
-custom_minimum_size = Vector2(160, 36)
+custom_minimum_size = Vector2(400, 64)
 focus_mode = 2
 disabled = true
 text = "Continue"
+theme_override_font_sizes/font_size = 26
 
 [node name="BtnQuit" type="Button" parent="VBoxContainer"]
 layout_mode = 2
-custom_minimum_size = Vector2(160, 36)
+custom_minimum_size = Vector2(400, 64)
 focus_mode = 2
 text = "Quit"
+theme_override_font_sizes/font_size = 26

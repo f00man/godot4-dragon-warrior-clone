@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://item_herb"]
+
+[ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_name = "Herb"
+description = "Restores 30 HP to one party member."
+effect_type = "heal_hp"
+effect_value = 30

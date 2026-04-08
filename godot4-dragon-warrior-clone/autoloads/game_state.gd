@@ -36,6 +36,12 @@ signal town_data_changed(town_id)
 # after every successful transition.
 signal scene_changed(path)
 
+# Fired when a party member gains enough XP to advance a level.
+# member_name is the display name (String) from PartyMemberData.
+# new_level is the level they just reached (int).
+# BattleManager connects to this to show a level-up message in the battle log.
+signal level_up_occurred(member_name, new_level)
+
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
@@ -46,6 +52,13 @@ const MAX_PARTY_SIZE = 4
 # Current save-file format version. Bump this when the save schema changes
 # so _migrate_save() in SaveManager knows what transformations to apply.
 const GAME_VERSION = "0.1.0"
+
+# Cumulative XP required to reach each level. The array index equals the level.
+# Index 0 is unused (there is no level 0). Index 1 = 0 XP because every new
+# member starts at level 1 already. Index 10 = 900 XP to reach level 10.
+# Any level beyond the last index in this table is uncapped — the member stays
+# at the table's maximum level. Add more entries here as design requires.
+const XP_TABLE = [0, 0, 10, 25, 50, 100, 175, 275, 400, 600, 900]
 
 # ------------------------------------------------------------------------------
 # Party Data
@@ -94,6 +107,12 @@ var current_scene = "res://scenes/world/overworld.tscn"
 # to disk — saving mid-battle would capture a transient state that can't be
 # cleanly restored.
 var in_battle = false
+
+# Array of EnemyData resources queued for the next battle. Set by EncounterManager
+# before transitioning to the battle scene; cleared by BattleManager on start.
+# NOT saved to disk — this is transient battle setup state only. SaveManager
+# intentionally omits this field from serialization.
+var pending_battle_enemies = []
 
 # When true, playtime accumulation is paused regardless of in_battle.
 # Set via pause_playtime() / resume_playtime(). Use this for cutscenes,
@@ -170,13 +189,22 @@ func resume_playtime():
 # Resets all game state to clean defaults for a new game.
 # Call this before starting a fresh playthrough or after wiping a save slot.
 func reset_to_defaults():
-	# Clear party and start with no members — the new-game flow adds the hero
-	party = []
+	# Seed the party with the hero resource so the party is never empty at the
+	# start of a new game. An empty party breaks save/load (SaveManager would
+	# serialize an empty array and restore it, leaving every downstream system —
+	# battle, HUD, stat screens — with no party members to work with) and forces
+	# every other system to defensively handle the empty-party edge case. Starting
+	# with the hero here is the single authoritative place that guarantees a
+	# non-empty party from the very first frame of a new playthrough.
+	party = [load("res://resources/party_members/hero.tres")]
 	gold = 0
 	playtime = 0.0
 	inventory = []
 	world_flags = {}
-	player_position = Vector2.ZERO
+	# Tile (16, 11) matches the Player node's starting position in overworld.tscn
+	# (Vector2(512, 352) / 32 = tile col 16, row 11) — safely inside the grass,
+	# clear of all perimeter walls. Vector2.ZERO would land on the top-left wall tile.
+	player_position = Vector2(16, 11)
 	current_scene = "res://scenes/world/overworld.tscn"
 	in_battle = false
 	is_playtime_paused = false
@@ -368,3 +396,65 @@ func get_current_scene():
 func set_current_scene(path):
 	current_scene = path
 	emit_signal("scene_changed", path)
+
+# ------------------------------------------------------------------------------
+# Experience and Level-Up
+# ------------------------------------------------------------------------------
+
+# Awards `amount` experience points to `member` (a PartyMemberData resource).
+# Checks whether the new total crosses the threshold for the next level and
+# calls _apply_level_up() for each level gained — this handles the edge case
+# where a single battle award vaults a member past multiple level thresholds
+# at once (e.g. a fresh level-1 character earning 200 XP would reach level 7).
+# Emits party_changed once after all level-ups are processed so the UI refreshes
+# a single time rather than once per level gained.
+func award_experience(member, amount):
+	# Add the raw XP. experience should never decrease, so no clamping needed here.
+	member.experience += amount
+
+	# Level-up loop: keep promoting the member for as long as they have enough
+	# cumulative XP to reach the next level AND the next level exists in the table.
+	# We stop at XP_TABLE.size() - 1 because that is the highest defined level.
+	while member.level < XP_TABLE.size() - 1:
+		var xp_needed_for_next = XP_TABLE[member.level + 1]
+		if member.experience >= xp_needed_for_next:
+			# Member has crossed the threshold — promote them.
+			_apply_level_up(member)
+		else:
+			# Not enough XP for the next level yet — stop checking.
+			break
+
+	# Notify all listeners (party screen, HUD) that party data changed.
+	emit_signal("party_changed")
+
+
+# Applies one level of stat growth to `member` and announces it via signal.
+# Called once per level gained inside the award_experience loop.
+# Stat increases are fixed values intentionally kept conservative at this stage
+# of development; they can be made data-driven later if a designer wants per-
+# class growth rates. HP and MP are fully restored so a level-up mid-battle feels
+# rewarding (mirrors classic Dragon Warrior / Dragon Quest behaviour).
+func _apply_level_up(member):
+	# Advance the level counter first so the signal carries the new level number.
+	member.level += 1
+
+	# Apply fixed stat growth per level. These constants are the current design
+	# defaults — adjust here (or make data-driven via PartyMemberData exports)
+	# once the balance pass begins.
+	member.max_hp    += 10   # Primary survivability stat; meaningful per level
+	member.max_mp    += 5    # Smaller gain; MP is a scarce resource by design
+	member.attack    += 3    # Offensive growth; keeps damage scaling with level
+	member.defense   += 2    # Defensive growth; slightly slower than offense
+	member.speed     += 1    # Turn-order stat; slow drift so it stays meaningful
+
+	# Restore HP and MP to the new maximums. This is the classic JRPG level-up
+	# feel — gaining a level heals you. It also prevents the awkward state of
+	# max_hp increasing while current_hp stays at the old (now lower) cap.
+	member.current_hp = member.max_hp
+	member.current_mp = member.max_mp
+
+	# Broadcast the level-up event. BattleManager connects to this to show a
+	# message in the battle log. The UI party screen will rebuild from party_changed
+	# (emitted by the caller, award_experience) — we do NOT emit party_changed here
+	# to avoid multiple redundant refreshes when multi-levelling occurs.
+	emit_signal("level_up_occurred", member.member_name, member.level)
