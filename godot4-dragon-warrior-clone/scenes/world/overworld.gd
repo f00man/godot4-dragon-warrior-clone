@@ -18,6 +18,7 @@
 # Attached to: Node2D (Overworld) in scenes/world/overworld.tscn
 # ==============================================================================
 
+@tool
 extends Node2D
 
 # ------------------------------------------------------------------------------
@@ -87,20 +88,25 @@ const ENTRANCES = {
 # ==============================================================================
 
 func _ready():
-	# If the TileMapLayer has no tileset (scene was never baked via the
-	# EditorScript), generate the full overworld in memory right now.
-	# This is transparent to the player and means the game is playable
-	# immediately without any editor setup step.
+	# In the Godot editor, only generate the tilemap visuals — no game logic.
+	# @tool makes _ready() run when the scene is opened, so the map appears
+	# immediately in the 2D view without needing to play the game first.
+	# Autoloads (GameState, EventManager, etc.) are not available in editor
+	# mode so every game-logic call must be guarded by this check.
+	if Engine.is_editor_hint():
+		if tilemap.tile_set == null:
+			_generate_map()
+		return
+
+	# Runtime: generate if the tileset wasn't baked into the .tscn yet.
 	if tilemap.tile_set == null:
-		print("overworld: tileset missing — generating Dragon Warrior map …")
+		print("overworld: generating Dragon Warrior map …")
 		_generate_map()
-		print("overworld: map generation complete.")
 
 	# Resume playtime — the player now has control of the overworld.
 	GameState.resume_playtime()
 
-	# Collision layer/mask 1 matches the TileMapLayer physics layer set in
-	# _build_tileset(), so the player stops at ocean and mountain tiles.
+	# Collision layer/mask 1 so the player interacts with NPC Area2D zones.
 	player.collision_layer = 1
 	player.collision_mask  = 1
 
