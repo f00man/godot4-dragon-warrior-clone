@@ -113,41 +113,59 @@ func _try_move(direction):
 	facing = direction
 	_update_direction_indicator()
 
-	# Convert the unit-direction vector into a full-tile pixel displacement.
-	# move_and_collide expects a motion in pixel space, not tile space.
+	var dest = tile_position + direction
+
+	# --- Tile-type blocking (overworld terrain) ---
+	# Check whether the destination tile is passable before attempting any
+	# physics move. This handles ocean and mountain blocking without needing
+	# physics collision shapes on the TileSet, which avoids version-dependent
+	# TileData physics polygon APIs.
+	if _is_tile_blocked(dest):
+		return
+
+	# --- Physics-body blocking (castle walls, NPC colliders, etc.) ---
+	# move_and_collide handles StaticBody2D walls placed in castle/town scenes.
+	# On the overworld the TileMapLayer has no physics layer, so this only fires
+	# when the player bumps into a scene-placed physics object.
 	var motion = direction * TILE_SIZE
-
-	# Attempt the move through Godot's physics engine. move_and_collide returns
-	# a KinematicCollision2D object if something blocked the motion, or null if
-	# the player moved freely. This replaces the old direct position assignment
-	# so wall tile collision shapes actually stop movement.
 	var collision = move_and_collide(motion)
-
 	if collision != null:
-		# A physics body (the TileMapLayer wall shape) blocked the full motion.
-		# Do NOT update tile_position or emit player_moved — from the game's
-		# perspective the player did not change tiles.
-		# move_and_collide may have slid the body slightly along a surface, but
-		# for grid movement we want to stay exactly on the grid, so snap back.
+		# A StaticBody2D blocked the move. Snap back to the exact grid position
+		# to prevent any sub-pixel drift from the partial move_and_collide slide.
 		position = tile_position * TILE_SIZE
 		return
 
-	# Move was unobstructed — commit the new tile coordinate.
-	# We derive tile_position from the actual post-move pixel position to stay
-	# in sync with what move_and_collide wrote, then snap to the nearest grid
-	# origin so any sub-pixel drift is eliminated.
-	tile_position = tile_position + direction
-
-	# Snap the pixel position to the exact tile grid coordinate. This guards
-	# against any floating-point drift that move_and_collide might introduce.
+	# Move was clear — commit the new tile coordinate and pixel position.
+	tile_position = dest
 	position = tile_position * TILE_SIZE
 
-	# Track how many tiles the player has walked. The encounter system will
-	# compare this against a zone-specific threshold to roll for battles.
 	step_count += 1
-	print("Step %d — tile position: %s" % [step_count, tile_position])
+	print("Step %d — tile: %s" % [step_count, tile_position])
 
-	# Notify the overworld (and anything else listening) that the player has
-	# moved. Keeps GameState in sync without this script needing to know
-	# anything about GameState directly — loose coupling via signals.
+	# Notify listeners (overworld.gd updates GameState; EncounterManager rolls
+	# for a random battle). Loose coupling — player.gd emits, others react.
 	player_moved.emit(tile_position)
+
+
+# Returns true if the tile at tile_pos should block the player.
+# Looks for a TileMapLayer sibling node; if none exists (e.g. in castle scenes
+# that use StaticBody2D walls instead) this always returns false so physics
+# blocking takes over.
+func _is_tile_blocked(tile_pos):
+	var tilemap = get_node_or_null("../TileMapLayer")
+	if tilemap == null or tilemap.tile_set == null:
+		return false
+
+	var ipos = Vector2i(int(tile_pos.x), int(tile_pos.y))
+	var atlas = tilemap.get_cell_atlas_coords(ipos)
+
+	# Vector2i(-1,-1) means no tile at that cell — off the edge of the map.
+	# Treat as blocked so the player cannot walk into empty space.
+	if atlas == Vector2i(-1, -1):
+		return true
+
+	# The tile type is encoded in the atlas X coordinate (column index),
+	# matching the 10-column placeholder tileset built in overworld.gd.
+	# OCEAN = column 0, MOUNTAIN = column 3.
+	var tile_type = atlas.x
+	return tile_type == 0 or tile_type == 3

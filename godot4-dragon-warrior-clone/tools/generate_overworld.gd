@@ -352,11 +352,9 @@ func _build_tileset():
 	var tileset = TileSet.new()
 	tileset.tile_size = Vector2i(32, 32)
 
-	# Physics layer 0 in the tileset maps to collision layer/mask 1 in the world.
-	# This matches what overworld.gd sets on the Player CharacterBody2D.
-	tileset.add_physics_layer()
-	tileset.set_physics_layer_collision_layer(0, 1)
-	tileset.set_physics_layer_collision_mask(0, 1)
+	# No physics layer — terrain blocking is handled by player.gd reading the
+	# atlas column index of the destination tile before committing the move.
+	# This avoids the version-dependent TileData physics polygon API.
 
 	# ── Atlas source ─────────────────────────────────────────────────────────
 	var source = TileSetAtlasSource.new()
@@ -366,16 +364,6 @@ func _build_tileset():
 	# Register all 10 tile entries so set_cell() can reference them by atlas coord.
 	for i in range(10):
 		source.create_tile(Vector2i(i, 0))
-
-	# Add a full-tile collision polygon to each impassable tile type.
-	# The polygon vertices are in tile-local coordinates (0,0) to (32,32).
-	var block = PackedVector2Array([
-		Vector2(0, 0), Vector2(32, 0), Vector2(32, 32), Vector2(0, 32)
-	])
-	for blocked_type in [OCEAN, MOUNTAIN]:
-		var td = source.get_tile_data(Vector2i(blocked_type, 0), 0)
-		td.set_physics_layer_polygon_count(0, 1)
-		td.set_physics_layer_polygon(0, 0, block)
 
 	# Source ID will be 0 (first and only source in this tileset).
 	tileset.add_source(source)

@@ -295,29 +295,19 @@ func _build_tileset():
 		img.fill_rect(Rect2i(i * 32, 0, 32, 32), colors[i])
 	var tex = ImageTexture.create_from_image(img)
 
+	# No physics layer on the TileSet — terrain blocking is handled entirely
+	# in player.gd via _is_tile_blocked(), which reads the atlas column index
+	# of the destination tile. This avoids the TileData physics polygon API
+	# (which has version-dependent method names) and is more Dragon Warrior-
+	# authentic: blocking is pure tile logic, not physics simulation.
 	var tileset = TileSet.new()
 	tileset.tile_size = Vector2i(32, 32)
-
-	# Physics layer 0 → world collision layer/mask 1.
-	# Blocking tiles (OCEAN, MOUNTAIN) get a full-tile polygon below.
-	tileset.add_physics_layer()
-	tileset.set_physics_layer_collision_layer(0, 1)
-	tileset.set_physics_layer_collision_mask(0, 1)
 
 	var source = TileSetAtlasSource.new()
 	source.texture = tex
 	source.texture_region_size = Vector2i(32, 32)
 	for i in range(10):
 		source.create_tile(Vector2i(i, 0))
-
-	# Full-tile collision polygon (tile-local coords 0→32).
-	var block = PackedVector2Array([
-		Vector2(0, 0), Vector2(32, 0), Vector2(32, 32), Vector2(0, 32)
-	])
-	for blocked in [OCEAN, MOUNTAIN]:
-		var td = source.get_tile_data(Vector2i(blocked, 0), 0)
-		td.set_physics_layer_polygon_count(0, 1)
-		td.set_physics_layer_polygon(0, 0, block)
 
 	tileset.add_source(source)
 	return tileset
