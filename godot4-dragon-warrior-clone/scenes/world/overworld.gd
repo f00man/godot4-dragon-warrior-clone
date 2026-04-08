@@ -94,8 +94,10 @@ func _ready():
 	# Autoloads (GameState, EventManager, etc.) are not available in editor
 	# mode so every game-logic call must be guarded by this check.
 	if Engine.is_editor_hint():
-		if tilemap.tile_set == null:
-			_generate_map()
+		# Always regenerate in editor mode so changes to the generation code
+		# are reflected immediately when the scene is opened — no manual
+		# EditorScript step required.
+		_generate_map()
 		return
 
 	# Runtime: generate if the tileset wasn't baked into the .tscn yet.
