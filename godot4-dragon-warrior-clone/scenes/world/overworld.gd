@@ -21,6 +21,12 @@
 @tool
 extends Node2D
 
+# Click this button in the Inspector (with the Overworld node selected in the
+# editor) to force the map to regenerate from the current generation code.
+# Use this after pulling code changes — Godot caches compiled scripts and
+# _ready() may not re-run automatically.
+@export_tool_button("Regenerate Map") var _regen_btn = func(): _generate_map()
+
 # ------------------------------------------------------------------------------
 # Tile type indices — must match the atlas column order in _build_tileset().
 # tools/generate_overworld.gd uses the same constants; keep both in sync.
