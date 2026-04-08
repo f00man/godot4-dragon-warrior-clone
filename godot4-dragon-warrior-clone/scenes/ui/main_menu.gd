@@ -25,8 +25,9 @@ signal new_game_requested
 # Constants
 # ------------------------------------------------------------------------------
 
-# Path to the overworld scene — destination after starting a new game.
-const OVERWORLD_SCENE = "res://scenes/world/overworld.tscn"
+# Path to the starting scene for a new game — Tantegel Castle throne room,
+# where King Lorik delivers his opening speech exactly as in Dragon Warrior NES.
+const OVERWORLD_SCENE = "res://scenes/world/tantegel_throne_room.tscn"
 
 # Path to the save/load selection screen — shown when the player picks Continue.
 const SAVE_SCREEN_SCENE = "res://scenes/ui/save_screen.tscn"

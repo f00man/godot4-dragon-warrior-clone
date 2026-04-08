@@ -365,8 +365,12 @@ func _deserialize_into_game_state(data, slot):
 func _scene_path_to_label(scene_path):
 	# Map of known scene paths to display-friendly names
 	var labels = {
-		"res://scenes/world/overworld.tscn": "Overworld",
-		"res://scenes/battle/battle_scene.tscn": "In Battle"
+		"res://scenes/world/overworld.tscn":              "Overworld",
+		"res://scenes/battle/battle_scene.tscn":          "In Battle",
+		"res://scenes/world/tantegel_throne_room.tscn":   "Tantegel Castle — Throne Room",
+		"res://scenes/world/tantegel_floor2.tscn":        "Tantegel Castle — Upper Hall",
+		"res://scenes/world/tantegel_floor1.tscn":        "Tantegel Castle — Entry Hall",
+		"res://scenes/towns/town_sample.tscn":            "Brecconary"
 	}
 	if labels.has(scene_path):
 		return labels[scene_path]

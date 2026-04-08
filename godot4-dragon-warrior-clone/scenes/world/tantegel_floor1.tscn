@@ -1,0 +1,498 @@
+; ==============================================================================
+; tantegel_floor1.tscn
+; Part of: godot4-dragon-warrior-clone
+; Room: 14 columns x 8 rows at 32px per tile = 448 x 256 pixels world-space.
+; Fixed Camera2D at scene root (not parented to Player), zoom 2x.
+; Encounters are disabled (base_encounter_rate = 0.0).
+; North gap (stairs up to Floor 2) and south gap (castle exit to overworld)
+; are both centred at x=192–256 (columns 6–7), two-tile openings.
+; NPCs: two guards at north, old soldier west, guard at exit, guard east.
+; Chest: herb near the west wall (world flag guarded, one-time loot).
+; ==============================================================================
+
+[gd_scene load_steps=13 format=3 uid="uid://tantegelfloor11"]
+
+; ------------------------------------------------------------------------------
+; External resources — scripts and the instanced DialogueBox packed scene.
+; ------------------------------------------------------------------------------
+
+; Root scene script — handles playtime resume and scene-event check.
+[ext_resource type="Script" path="res://scenes/world/tantegel_floor1.gd" id="1_floor1"]
+
+; Player entity script — CharacterBody2D with grid-based tile movement.
+[ext_resource type="Script" path="res://scripts/entities/player.gd" id="2_player"]
+
+; EncounterManager — rate set to 0.0 so no battles fire inside the castle.
+[ext_resource type="Script" path="res://scripts/systems/encounter_manager.gd" id="3_encountermgr"]
+
+; Generic NPC dialogue script — speaker_name and dialogue_pages set per-instance.
+[ext_resource type="Script" path="res://scripts/entities/npc_dialogue.gd" id="4_npcdialogue"]
+
+; Staircase auto-trigger — stepping on it immediately transitions to the target scene.
+[ext_resource type="Script" path="res://scripts/entities/staircase.gd" id="5_staircase"]
+
+; Reusable DialogueBox packed scene — wires itself to EventManager in its own _ready().
+[ext_resource type="PackedScene" uid="uid://dialoguebox1" path="res://scenes/ui/dialogue_box.tscn" id="6_dialoguebox"]
+
+; Treasure chest — one-time loot, world-flag guarded, dims when opened.
+[ext_resource type="Script" path="res://scenes/towns/chest.gd" id="7_chest"]
+
+; ------------------------------------------------------------------------------
+; Sub-resources — collision shapes shared across multiple nodes.
+; ------------------------------------------------------------------------------
+
+; Partial wall segment — 192px wide (6 tiles), 32px tall (1 tile).
+; Used for both north wall halves and south wall halves (gap at x=192–256).
+[sub_resource type="RectangleShape2D" id="PartialShape"]
+size = Vector2(192, 32)
+
+; Side wall — full room height (256px), one tile (32px) wide.
+[sub_resource type="RectangleShape2D" id="SideShape"]
+size = Vector2(32, 256)
+
+; Staircase / exit trigger area — two tiles wide (64px), one tile tall (32px).
+[sub_resource type="RectangleShape2D" id="StairShape"]
+size = Vector2(64, 32)
+
+; NPC / player body collision — 28x28, slightly smaller than the 32px tile.
+[sub_resource type="RectangleShape2D" id="BodyShape"]
+size = Vector2(28, 28)
+
+; NPC / chest interaction zone — 48x48 so the player can trigger from an
+; adjacent tile without needing to stand exactly on the object.
+[sub_resource type="RectangleShape2D" id="InteractShape"]
+size = Vector2(48, 48)
+
+; ==============================================================================
+; NODE TREE
+; ==============================================================================
+
+[node name="TantegelFloor1" type="Node2D"]
+script = ExtResource("1_floor1")
+
+; Fixed Camera — centred at room midpoint (224, 128), zoom=2.
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(224, 128)
+zoom = Vector2(2, 2)
+
+; Warm tan stone floor — fills the entire room (448 x 256 px).
+[node name="FloorBackground" type="ColorRect" parent="."]
+offset_right = 448.0
+offset_bottom = 256.0
+color = Color(0.65, 0.55, 0.4, 1.0)
+
+; ==============================================================================
+; WALLS — same gap pattern as Floor 2: two-tile gap (x=192–256) in both north
+; and south walls. North gap = stairs to Floor 2; south gap = castle exit.
+; ==============================================================================
+
+; North wall left — columns 0–6 (0–192 px), row 0 (y=0..32).
+[node name="NorthWallLeft" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NorthWallLeft"]
+position = Vector2(96, 16)
+shape = SubResource("PartialShape")
+
+[node name="WallRect" type="ColorRect" parent="NorthWallLeft"]
+offset_right = 192.0
+offset_bottom = 32.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; North wall right — columns 8–14 (256–448 px), row 0.
+[node name="NorthWallRight" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NorthWallRight"]
+position = Vector2(352, 16)
+shape = SubResource("PartialShape")
+
+[node name="WallRect" type="ColorRect" parent="NorthWallRight"]
+offset_left = 256.0
+offset_right = 448.0
+offset_bottom = 32.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; South wall left — columns 0–6 (0–192 px), row 7 (y=224..256).
+; Leaves the centre gap open for the castle exit doorway.
+[node name="SouthWallLeft" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SouthWallLeft"]
+position = Vector2(96, 240)
+shape = SubResource("PartialShape")
+
+[node name="WallRect" type="ColorRect" parent="SouthWallLeft"]
+offset_top = 224.0
+offset_right = 192.0
+offset_bottom = 256.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; South wall right — columns 8–14 (256–448 px), row 7.
+[node name="SouthWallRight" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SouthWallRight"]
+position = Vector2(352, 240)
+shape = SubResource("PartialShape")
+
+[node name="WallRect" type="ColorRect" parent="SouthWallRight"]
+offset_left = 256.0
+offset_top = 224.0
+offset_right = 448.0
+offset_bottom = 256.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; West wall — column 0 (0–32 px), full room height.
+[node name="WestWall" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WestWall"]
+position = Vector2(16, 128)
+shape = SubResource("SideShape")
+
+[node name="WallRect" type="ColorRect" parent="WestWall"]
+offset_right = 32.0
+offset_bottom = 256.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; East wall — column 13 (416–448 px), full room height.
+[node name="EastWall" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EastWall"]
+position = Vector2(432, 128)
+shape = SubResource("SideShape")
+
+[node name="WallRect" type="ColorRect" parent="EastWall"]
+offset_left = 416.0
+offset_right = 448.0
+offset_bottom = 256.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; ==============================================================================
+; TRANSITIONS — StairsUp ascends to Floor 2; CastleExit leaves to the overworld.
+; Both use staircase.gd with their respective target_scene and spawn_tile values.
+; ==============================================================================
+
+; Stairs up — north gap (x=192–256, y=0–32) — leads to tantegel_floor2.
+; spawn_tile Vector2(7,6) places the player on the downward stairs of Floor 2,
+; one tile above the south gap so they arrive at the correct landing position.
+[node name="StairsUp" type="Area2D" parent="."]
+script = ExtResource("5_staircase")
+target_scene = "res://scenes/world/tantegel_floor2.tscn"
+spawn_tile = Vector2(7, 6)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairsUp"]
+position = Vector2(224, 16)
+shape = SubResource("StairShape")
+
+[node name="StairRect" type="ColorRect" parent="StairsUp"]
+offset_left = 192.0
+offset_top = 0.0
+offset_right = 256.0
+offset_bottom = 32.0
+color = Color(0.35, 0.35, 0.45, 1.0)
+
+; Upward arrow label — floats just below the staircase tile opening.
+[node name="StairLabel" type="Label" parent="StairsUp"]
+offset_left = 192.0
+offset_top = 33.0
+offset_right = 256.0
+offset_bottom = 49.0
+text = "▲"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+
+; Castle exit — south gap (x=192–256, y=224–256) — leads to the overworld.
+; spawn_tile Vector2(16,9) places the player just south of the castle gate on
+; the overworld map, the standard entry point for Tantegel Castle.
+; Uses a brown colour to visually distinguish the exit from interior stairs.
+[node name="CastleExit" type="Area2D" parent="."]
+script = ExtResource("5_staircase")
+target_scene = "res://scenes/world/overworld.tscn"
+spawn_tile = Vector2(16, 9)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CastleExit"]
+position = Vector2(224, 240)
+shape = SubResource("StairShape")
+
+; Brown exit tile — visually distinct from interior stairs so the player
+; immediately recognises this as the way out to the overworld.
+[node name="StairRect" type="ColorRect" parent="CastleExit"]
+offset_left = 192.0
+offset_top = 224.0
+offset_right = 256.0
+offset_bottom = 256.0
+color = Color(0.4, 0.3, 0.2, 1.0)
+
+; Exit label — floats above the doorway opening so it is readable without
+; covering the brown exit tile. font_size=12 is slightly smaller than the
+; interior stair labels since the text "▼ Exit" is wider than a single arrow.
+[node name="StairLabel" type="Label" parent="CastleExit"]
+offset_left = 192.0
+offset_top = 206.0
+offset_right = 256.0
+offset_bottom = 222.0
+text = "▼ Exit"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 12
+
+; ==============================================================================
+; NPCs — five characters populate the entrance hall.
+; collision_layer=1 (player bumps them), collision_mask=0 (NPCs ignore each other).
+; ==============================================================================
+
+; --- Guard (north left, blue tint) ---
+; tile (6,2) = pixel (192, 64) — standing near the upward staircase.
+; Asks the player whether they have yet visited King Lorik.
+[node name="NPC_GuardNorth" type="CharacterBody2D" parent="."]
+position = Vector2(192, 64)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Guard"
+dialogue_pages = ["Those stairs lead up to the upper halls and the throne room. Have thou spoken with King Lorik yet?"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardNorth"]
+position = Vector2(16, 16)
+shape = SubResource("BodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardNorth"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.4, 0.4, 0.8, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_GuardNorth"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Guard"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_GuardNorth"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardNorth/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("InteractShape")
+
+; --- Guard (north right, blue tint) ---
+; tile (9,2) = pixel (288, 64) — flanking the staircase on the right side.
+; Remarks on the dangerous state of the world outside.
+[node name="NPC_GuardEntrance" type="CharacterBody2D" parent="."]
+position = Vector2(288, 64)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Guard"
+dialogue_pages = ["Welcome to Tantegel Castle. Few dare enter these days, with monsters prowling the roads outside."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardEntrance"]
+position = Vector2(16, 16)
+shape = SubResource("BodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardEntrance"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.4, 0.4, 0.8, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_GuardEntrance"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Guard"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_GuardEntrance"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardEntrance/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("InteractShape")
+
+; --- Old Soldier (warm brown tint) ---
+; tile (2,4) = pixel (64, 128) — west side of the hall, a veteran voice.
+; Two pages: reflects on thirty years of service and the loss of the Ball of Light.
+[node name="NPC_OldSoldier" type="CharacterBody2D" parent="."]
+position = Vector2(64, 128)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Old Soldier"
+dialogue_pages = ["I have guarded this castle for thirty years. In all my years, I have never seen darkness such as this.", "When I was young, the Ball of Light shone from the throne room, its radiance blessing all of Alefgard. Now only memory remains."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_OldSoldier"]
+position = Vector2(16, 16)
+shape = SubResource("BodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_OldSoldier"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.55, 0.35, 0.2, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_OldSoldier"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Soldier"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_OldSoldier"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_OldSoldier/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("InteractShape")
+
+; --- Guard (exit, blue tint) ---
+; tile (7,6) = pixel (224, 192) — standing directly above the exit doorway.
+; Points the player toward Brecconary and hints at the inn and shops there.
+[node name="NPC_GuardExit" type="CharacterBody2D" parent="."]
+position = Vector2(224, 192)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Guard"
+dialogue_pages = ["The town of Brecconary lies just south of here. The innkeeper is kind, and the shops are well-stocked for a brave warrior such as thee."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardExit"]
+position = Vector2(16, 16)
+shape = SubResource("BodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardExit"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.4, 0.4, 0.8, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_GuardExit"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Guard"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_GuardExit"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardExit/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("InteractShape")
+
+; --- Guard (east side, blue tint) ---
+; tile (11,6) = pixel (352, 192) — east side of the exit area.
+; Warns the player about the monsters roaming the roads near the castle.
+[node name="NPC_GuardRight" type="CharacterBody2D" parent="."]
+position = Vector2(352, 192)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Guard"
+dialogue_pages = ["Take care on the road. Slimes and Drakees roam the fields between here and the eastern lands."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardRight"]
+position = Vector2(16, 16)
+shape = SubResource("BodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardRight"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.4, 0.4, 0.8, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_GuardRight"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Guard"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_GuardRight"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardRight/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("InteractShape")
+
+; ==============================================================================
+; CHEST — Node2D using chest.gd, positioned at tile (3,5) = pixel (96, 160).
+; item_id="herb" and world_flag="chest_castle_f1_herb" are set as @export vars
+; so chest.gd handles all the open/guard/dim logic without any changes here.
+; The InteractionZone uses the shared InteractShape (48x48) — same as NPCs.
+; ==============================================================================
+
+[node name="Chest" type="Node2D" parent="."]
+position = Vector2(96, 160)
+script = ExtResource("7_chest")
+item_id = "herb"
+world_flag = "chest_castle_f1_herb"
+
+; Golden-yellow chest rectangle — visually distinct from floor and walls.
+[node name="ChestRect" type="ColorRect" parent="Chest"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.7, 0.5, 0.1, 1.0)
+
+; Question mark label floats above the chest to hint that it is interactable.
+; offset_top=-20 clears the 32px chest body so it doesn't overlap the graphic.
+[node name="ChestLabel" type="Label" parent="Chest"]
+offset_left = -8.0
+offset_top = -20.0
+offset_right = 24.0
+offset_bottom = 0.0
+text = "?"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+
+; Interaction zone — chest.gd listens to body_entered/exited on this Area2D.
+[node name="InteractionZone" type="Area2D" parent="Chest"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Chest/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("InteractShape")
+
+; ==============================================================================
+; PLAYER — CharacterBody2D at tile (7,3) = pixel (224, 96).
+; Layers set in tantegel_floor1.gd._ready(). No Camera2D child — fixed root cam.
+; ==============================================================================
+
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(224, 96)
+script = ExtResource("2_player")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+position = Vector2(16, 16)
+shape = SubResource("BodyShape")
+
+; Cyan rectangle — temporary player visual until real sprite sheets are added.
+[node name="PlaceholderRect" type="ColorRect" parent="Player"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.0, 1.0, 1.0, 1.0)
+
+; ==============================================================================
+; ENCOUNTER MANAGER — rate 0.0, no battles inside the castle.
+; ==============================================================================
+
+[node name="EncounterManager" type="Node" parent="."]
+script = ExtResource("3_encountermgr")
+base_encounter_rate = 0.0
+
+; ==============================================================================
+; DIALOGUE LAYER — CanvasLayer at layer 7, DialogueBox instanced below.
+; ==============================================================================
+
+[node name="DialogueLayer" type="CanvasLayer" parent="."]
+layer = 7
+
+[node name="DialogueBox" parent="DialogueLayer" instance=ExtResource("6_dialoguebox")]

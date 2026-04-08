@@ -83,9 +83,10 @@ func _open_chest():
 	# the chest remains empty if the player saves and reloads.
 	GameState.set_flag(world_flag, true)
 
-	# Show discovery dialogue near the chest. global_position lets the DialogueBox
-	# place itself above or below the chest rather than always at the bottom bar.
-	EventManager.request_dialogue("Treasure Chest", "You found a Royal Scroll!", [], global_position)
+	# Build the discovery message from the actual item_id so any chest shows the
+	# correct item name. Converts "royal_scroll" → "Royal Scroll" automatically.
+	var item_display = item_id.replace("_", " ").capitalize()
+	EventManager.request_dialogue("Treasure Chest", "You found a %s!" % item_display, [], global_position)
 
 	# Dim and lock the chest in the same frame so feedback is immediate.
 	_mark_opened()

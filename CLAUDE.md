@@ -368,6 +368,20 @@ the relevant system is built. Update this table as items are resolved or added.
 
 ---
 
+## Git / GitHub SSH
+
+All git commands that require SSH authentication (push, pull, fetch, clone) must
+use the following pattern to specify the correct key:
+
+```bash
+GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa.bilberryhome -o IdentitiesOnly=yes' git push origin main
+```
+
+Replace the trailing `git push origin main` with whichever git command is needed.
+This applies every time Claude runs a git command that touches the remote.
+
+---
+
 ## Manual Setup Required in Godot Editor
 
 Steps that cannot be automated and must be done by hand in the Godot editor. Check this list when onboarding or setting up a fresh project clone.

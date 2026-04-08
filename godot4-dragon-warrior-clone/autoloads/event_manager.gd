@@ -337,6 +337,17 @@ func evaluate_condition(condition):
 func request_dialogue(speaker, text, choices = [], world_pos = null):
 	emit_signal("dialogue_requested", speaker, [text], choices, world_pos)
 
+# Variant of request_dialogue that accepts a pre-built array of pages instead
+# of a single string. Use this for multi-page NPC conversations where each
+# element is one full screen of text.
+#
+# speaker   — Name shown in the speaker label.
+# pages     — Array of Strings, one entry per dialogue screen.
+# choices   — Optional Array of choice strings after the final page.
+# world_pos — Optional Vector2 world position for near-entity panel placement.
+func request_dialogue_pages(speaker, pages, choices = [], world_pos = null):
+	emit_signal("dialogue_requested", speaker, pages, choices, world_pos)
+
 # Applies the outcome dictionary from a player's event choice to GameState.
 # Called by submit_choice() with the outcomes dict from the selected choice
 # and the event_id so the completion flag can be keyed correctly.

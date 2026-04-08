@@ -1,0 +1,538 @@
+; ==============================================================================
+; tantegel_throne_room.tscn
+; Part of: godot4-dragon-warrior-clone
+; Room: 14 columns x 8 rows at 32px per tile = 448 x 256 pixels world-space.
+; Fixed Camera2D at scene root (not parented to Player) shows the full room at
+; once at zoom 2x — exactly as Dragon Warrior NES presents the throne room.
+; Encounters are disabled (base_encounter_rate = 0.0 on EncounterManager).
+; First visit: King Lorik delivers his 7-page opening speech (world flag guards
+; repeat plays). Subsequent visits: player can speak to all NPCs and use stairs.
+; ==============================================================================
+
+[gd_scene load_steps=13 format=3 uid="uid://tantegelthrone1"]
+
+; ------------------------------------------------------------------------------
+; External resources — scripts and the instanced DialogueBox packed scene.
+; IDs are human-readable strings following the project convention (overworld.tscn).
+; ------------------------------------------------------------------------------
+
+; Root scene script — handles King Lorik intro speech and playtime resume.
+[ext_resource type="Script" path="res://scenes/world/tantegel_throne_room.gd" id="1_throneroom"]
+
+; Player entity script — CharacterBody2D with grid-based tile movement.
+[ext_resource type="Script" path="res://scripts/entities/player.gd" id="2_player"]
+
+; EncounterManager — rate set to 0.0 so no battles fire inside the throne room.
+[ext_resource type="Script" path="res://scripts/systems/encounter_manager.gd" id="3_encountermgr"]
+
+; Generic NPC dialogue script — speaker_name and dialogue_pages set per-instance.
+[ext_resource type="Script" path="res://scripts/entities/npc_dialogue.gd" id="4_npcdialogue"]
+
+; Staircase auto-trigger — steps on it immediately descend, no button needed.
+[ext_resource type="Script" path="res://scripts/entities/staircase.gd" id="5_staircase"]
+
+; Reusable DialogueBox packed scene — wires itself to EventManager in its own _ready().
+[ext_resource type="PackedScene" uid="uid://dialoguebox1" path="res://scenes/ui/dialogue_box.tscn" id="6_dialoguebox"]
+
+; ------------------------------------------------------------------------------
+; Sub-resources — collision shapes shared across multiple nodes.
+; Defining them once here and referencing by id keeps the file compact and
+; ensures that editing a shape size updates all users simultaneously in-editor.
+; ------------------------------------------------------------------------------
+
+; Full north wall — spans the entire 448px room width, 32px (one tile) tall.
+[sub_resource type="RectangleShape2D" id="NorthWallShape"]
+size = Vector2(448, 32)
+
+; South partial wall — each half is 192px wide (6 tiles), leaving a 64px gap
+; in the centre for the staircase opening. Two separate StaticBody2D nodes use
+; this same shape: SouthWallLeft and SouthWallRight.
+[sub_resource type="RectangleShape2D" id="SouthPartialShape"]
+size = Vector2(192, 32)
+
+; East and west walls — full room height (256px), one tile (32px) wide.
+[sub_resource type="RectangleShape2D" id="SideWallShape"]
+size = Vector2(32, 256)
+
+; Staircase trigger area — two tiles wide (64px), one tile tall (32px).
+; Matches the visible StairRect ColorRect so the trigger visually lines up.
+[sub_resource type="RectangleShape2D" id="StairShape"]
+size = Vector2(64, 32)
+
+; NPC body collision — slightly smaller than the 32px tile so NPCs feel
+; naturally passable at the corners, matching Dragon Warrior's grid feel.
+[sub_resource type="RectangleShape2D" id="NpcBodyShape"]
+size = Vector2(28, 28)
+
+; NPC interaction zone — larger than the body so the player can stand
+; one tile away and still trigger Accept-to-talk. 48x48 = 1.5 tiles.
+[sub_resource type="RectangleShape2D" id="NpcInteractShape"]
+size = Vector2(48, 48)
+
+; ==============================================================================
+; NODE TREE
+; ==============================================================================
+
+; Root Node2D — no position needed; everything is laid out in world-space below.
+[node name="TantegelThroneRoom" type="Node2D"]
+script = ExtResource("1_throneroom")
+
+; ------------------------------------------------------------------------------
+; Fixed Camera — NOT parented to the Player.
+; Positioned at the room centre (224, 128) with zoom=2 so all 448x256 world
+; pixels map to 896x512 screen pixels, keeping the NES proportions readable.
+; ------------------------------------------------------------------------------
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(224, 128)
+zoom = Vector2(2, 2)
+
+; ------------------------------------------------------------------------------
+; Background geometry — ColorRect nodes that represent the floor, throne back,
+; and throne carpet. These are purely visual placeholders until real tile art is
+; added. They render in tree order so floor is drawn first (bottom), decorations on top.
+; ------------------------------------------------------------------------------
+
+; Warm tan stone floor — fills the entire room (448 x 256 px).
+[node name="FloorBackground" type="ColorRect" parent="."]
+offset_right = 448.0
+offset_bottom = 256.0
+color = Color(0.65, 0.55, 0.4, 1.0)
+
+; Dark crimson throne back — set against the north wall directly behind the king.
+; Spans columns 5.5–8.5 (176–272 px), row 0–1 (0–32 px).
+[node name="ThroneBack" type="ColorRect" parent="."]
+offset_left = 176.0
+offset_top = 0.0
+offset_right = 272.0
+offset_bottom = 32.0
+color = Color(0.35, 0.05, 0.05, 1.0)
+
+; Red throne platform carpet — row 1 (32–64 px), slightly wider than the back.
+; Provides a visual step for King Lorik to stand on at the north end of the room.
+[node name="ThroneCarpet" type="ColorRect" parent="."]
+offset_left = 160.0
+offset_top = 32.0
+offset_right = 288.0
+offset_bottom = 64.0
+color = Color(0.55, 0.1, 0.1, 1.0)
+
+; ==============================================================================
+; WALLS — StaticBody2D nodes with RectangleShape2D collision.
+; collision_layer=1 matches the tile physics layer so the Player's
+; move_and_collide stops here. collision_mask=1 is standard for static scenery.
+; Each wall also has a matching ColorRect child for visual representation.
+; ==============================================================================
+
+; North wall — spans the full 448px width along row 0 (y=0..32).
+; WallRect centre is at y=16, and the CollisionShape2D origin sits at (224,16)
+; which places the shape's centre at the midpoint of the wall rectangle.
+[node name="NorthWall" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NorthWall"]
+position = Vector2(224, 16)
+shape = SubResource("NorthWallShape")
+
+[node name="WallRect" type="ColorRect" parent="NorthWall"]
+offset_right = 448.0
+offset_bottom = 32.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; South-left wall — left half of the south edge, columns 0–6 (0–192 px), row 7.
+; Leaves the centre two tiles (192–256 px) open for the staircase.
+[node name="SouthWallLeft" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SouthWallLeft"]
+position = Vector2(96, 240)
+shape = SubResource("SouthPartialShape")
+
+[node name="WallRect" type="ColorRect" parent="SouthWallLeft"]
+offset_top = 224.0
+offset_right = 192.0
+offset_bottom = 256.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; South-right wall — right half of the south edge, columns 8–14 (256–448 px), row 7.
+[node name="SouthWallRight" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SouthWallRight"]
+position = Vector2(352, 240)
+shape = SubResource("SouthPartialShape")
+
+[node name="WallRect" type="ColorRect" parent="SouthWallRight"]
+offset_left = 256.0
+offset_top = 224.0
+offset_right = 448.0
+offset_bottom = 256.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; West wall — left edge, column 0 (0–32 px), full room height (0–256 px).
+; Shape centre is at (16, 128) — horizontal midpoint of the one-tile wall.
+[node name="WestWall" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WestWall"]
+position = Vector2(16, 128)
+shape = SubResource("SideWallShape")
+
+[node name="WallRect" type="ColorRect" parent="WestWall"]
+offset_right = 32.0
+offset_bottom = 256.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; East wall — right edge, column 13 (416–448 px), full room height.
+[node name="EastWall" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EastWall"]
+position = Vector2(432, 128)
+shape = SubResource("SideWallShape")
+
+[node name="WallRect" type="ColorRect" parent="EastWall"]
+offset_left = 416.0
+offset_right = 448.0
+offset_bottom = 256.0
+color = Color(0.2, 0.2, 0.25, 1.0)
+
+; ==============================================================================
+; STAIRCASE — Area2D with staircase.gd auto-trigger.
+; Stepping on this tile immediately descends to tantegel_floor2 (no button press).
+; spawn_tile Vector2(7,1) is the landing tile in the destination scene.
+; ==============================================================================
+
+[node name="StairsDown" type="Area2D" parent="."]
+script = ExtResource("5_staircase")
+; target_scene and spawn_tile are @export vars read by staircase.gd._on_body_entered()
+target_scene = "res://scenes/world/tantegel_floor2.tscn"
+spawn_tile = Vector2(7, 1)
+
+; Collision shape centred on the two-tile staircase opening (192–256 px, row 7).
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairsDown"]
+position = Vector2(224, 240)
+shape = SubResource("StairShape")
+
+; Visual placeholder for the staircase tile — dark blue-grey rectangle.
+[node name="StairRect" type="ColorRect" parent="StairsDown"]
+offset_left = 192.0
+offset_top = 224.0
+offset_right = 256.0
+offset_bottom = 256.0
+color = Color(0.35, 0.35, 0.45, 1.0)
+
+; Descend arrow label — floats just above the staircase so the player can see
+; it at a glance. font_size=14 keeps it readable without overwhelming the tile.
+[node name="StairLabel" type="Label" parent="StairsDown"]
+offset_left = 192.0
+offset_top = 206.0
+offset_right = 256.0
+offset_bottom = 222.0
+text = "▼"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+
+; ==============================================================================
+; NPCs — CharacterBody2D nodes using npc_dialogue.gd.
+; collision_layer=1 so the player bumps against them (impassable).
+; collision_mask=0 so NPCs do not push each other or interact with wall shapes.
+; Each NPC has: a body CollisionShape2D, a placeholder ColorRect, a floating
+; name Label, and an InteractionZone Area2D with a wider CollisionShape2D.
+;
+; NPC structure summary (repeated 7 times with different values):
+;   CollisionShape2D  at local (16,16) — body collision, NpcBodyShape (28x28)
+;   PlaceholderRect   at local (0,0)   — 32x32 colour fill, colour = faction tint
+;   NameLabel         above sprite     — 8px font, centred, identifies NPC at a glance
+;   InteractionZone   Area2D           — 48x48 detect area, triggers _speak() on Accept
+; ==============================================================================
+
+; --- King Lorik (gold throne tint) ---
+; Positioned at tile (6,1) = pixel (192, 32) — centred on the throne carpet.
+; dialogue_pages here are the repeat-visit lines; the intro is in the .gd constant.
+[node name="NPC_KingLorik" type="CharacterBody2D" parent="."]
+position = Vector2(192, 32)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "King Lorik"
+dialogue_pages = ["How dost thou fare, brave warrior? The fate of all Alefgard rests with thee.", "Should thy strength fail thee, return here to rest. The castle is always open to thee, descendant of Erdrick."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_KingLorik"]
+position = Vector2(16, 16)
+shape = SubResource("NpcBodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_KingLorik"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(1.0, 0.8, 0.0, 1.0)
+
+; Name label floats above the sprite (offset_top = -18 so it clears the 32px body).
+[node name="NameLabel" type="Label" parent="NPC_KingLorik"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "King Lorik"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_KingLorik"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_KingLorik/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("NpcInteractShape")
+
+; --- Guard (left, blue tint) ---
+; tile (4,1) = pixel (128, 32) — left of the throne, flanking the king.
+[node name="NPC_GuardLeft" type="CharacterBody2D" parent="."]
+position = Vector2(128, 32)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Royal Guard"
+dialogue_pages = ["I serve the royal house of Tantegel. It is my highest honour."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardLeft"]
+position = Vector2(16, 16)
+shape = SubResource("NpcBodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardLeft"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.4, 0.4, 0.8, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_GuardLeft"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Guard"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_GuardLeft"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardLeft/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("NpcInteractShape")
+
+; --- Guard (right, blue tint) ---
+; tile (9,1) = pixel (288, 32) — right of the throne, symmetrical with left guard.
+[node name="NPC_GuardRight" type="CharacterBody2D" parent="."]
+position = Vector2(288, 32)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Royal Guard"
+dialogue_pages = ["Be cautious beyond the castle walls. The monsters grow ever bolder in these dark times."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardRight"]
+position = Vector2(16, 16)
+shape = SubResource("NpcBodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardRight"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.4, 0.4, 0.8, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_GuardRight"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Guard"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_GuardRight"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardRight/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("NpcInteractShape")
+
+; --- Chancellor (green tint) ---
+; tile (2,3) = pixel (64, 96) — west side of the room, mid-depth.
+; Has two pages: treasure chest permission + quest item lore (Stones / Staff / Drop).
+[node name="NPC_Chancellor" type="CharacterBody2D" parent="."]
+position = Vector2(64, 96)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Chancellor"
+dialogue_pages = ["By royal decree, thou art granted permission to open any treasure chest within these castle walls.", "To defeat the Dragonlord, thou must gather the Stones of Sunlight, the Staff of Rain, and the Rainbow Drop. With these three treasures, the bridge to his fortress shall be revealed."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_Chancellor"]
+position = Vector2(16, 16)
+shape = SubResource("NpcBodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_Chancellor"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.2, 0.7, 0.3, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_Chancellor"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Chancellor"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_Chancellor"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_Chancellor/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("NpcInteractShape")
+
+; --- Royal Advisor (purple tint) ---
+; tile (11,3) = pixel (352, 96) — east side of the room, mirrors Chancellor.
+; Has two pages: Erdrick's Armor/Sword/Token lore.
+[node name="NPC_Advisor" type="CharacterBody2D" parent="."]
+position = Vector2(352, 96)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Royal Advisor"
+dialogue_pages = ["The chronicles speak of three sacred artifacts left by Erdrick: his Armor, his Sword, and his Token.", "Seek these relics in the far corners of Alefgard. They will greatly aid thee on thy quest."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_Advisor"]
+position = Vector2(16, 16)
+shape = SubResource("NpcBodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_Advisor"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.55, 0.2, 0.7, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_Advisor"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Advisor"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_Advisor"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_Advisor/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("NpcInteractShape")
+
+; --- Guard SW (blue tint) ---
+; tile (3,5) = pixel (96, 160) — south-west quadrant, near the stairs.
+[node name="NPC_GuardSW" type="CharacterBody2D" parent="."]
+position = Vector2(96, 160)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Guard"
+dialogue_pages = ["May thy journey be swift and thy sword arm strong, champion."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardSW"]
+position = Vector2(16, 16)
+shape = SubResource("NpcBodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardSW"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.4, 0.4, 0.8, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_GuardSW"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Guard"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_GuardSW"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardSW/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("NpcInteractShape")
+
+; --- Guard SE (blue tint) ---
+; tile (10,5) = pixel (320, 160) — south-east quadrant, symmetrical with SW guard.
+[node name="NPC_GuardSE" type="CharacterBody2D" parent="."]
+position = Vector2(320, 160)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("4_npcdialogue")
+speaker_name = "Guard"
+dialogue_pages = ["Princess Gwaelin was dear to us all. Rescue her if thou canst, brave warrior."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardSE"]
+position = Vector2(16, 16)
+shape = SubResource("NpcBodyShape")
+
+[node name="PlaceholderRect" type="ColorRect" parent="NPC_GuardSE"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.4, 0.4, 0.8, 1.0)
+
+[node name="NameLabel" type="Label" parent="NPC_GuardSE"]
+offset_left = -16.0
+offset_top = -18.0
+offset_right = 48.0
+offset_bottom = -2.0
+text = "Guard"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 8
+
+[node name="InteractionZone" type="Area2D" parent="NPC_GuardSE"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="NPC_GuardSE/InteractionZone"]
+position = Vector2(16, 16)
+shape = SubResource("NpcInteractShape")
+
+; ==============================================================================
+; PLAYER — CharacterBody2D at tile (6,6) = pixel (192, 192).
+; Collision layers are set in tantegel_throne_room.gd._ready() rather than here
+; so the intent is explicitly commented in code. The placeholder cyan rect and
+; body shape match the convention used in overworld.tscn.
+; NOTE: No Camera2D child here — the fixed root Camera2D handles all viewing.
+; ==============================================================================
+
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(192, 192)
+script = ExtResource("2_player")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+position = Vector2(16, 16)
+shape = SubResource("NpcBodyShape")
+
+; Cyan rectangle — temporary player visual until real sprite sheets are added.
+[node name="PlaceholderRect" type="ColorRect" parent="Player"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.0, 1.0, 1.0, 1.0)
+
+; ==============================================================================
+; ENCOUNTER MANAGER — base_encounter_rate is 0.0 so no battles fire here.
+; The throne room is always safe; this node is kept so the scene is structurally
+; consistent with overworld.tscn and tantegel_throne_room.gd can reference it.
+; ==============================================================================
+
+[node name="EncounterManager" type="Node" parent="."]
+script = ExtResource("3_encountermgr")
+base_encounter_rate = 0.0
+
+; ==============================================================================
+; DIALOGUE LAYER — CanvasLayer at layer 7 keeps the DialogueBox above all
+; world content but below any hypothetical pause/HUD layers (which use 8+).
+; The instanced DialogueBox connects itself to EventManager.dialogue_requested
+; in its own _ready() — no additional connections are needed here.
+; ==============================================================================
+
+[node name="DialogueLayer" type="CanvasLayer" parent="."]
+layer = 7
+
+[node name="DialogueBox" parent="DialogueLayer" instance=ExtResource("6_dialoguebox")]
